@@ -1,0 +1,87 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.MyApplication3" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/white</item>
+        <item name="colorPrimaryVariant">@color/white</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/light_gray</item>
+        <item name="colorSecondaryVariant">@color/light_blue</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/white</item>
+        <!-- Customize your theme here. -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="alertDialogTheme">@style/AlertDialogTheme</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
+    </style>
+
+    <!-- Bottom Navigation Style -->
+    <style name="BottomNavigationStyle" parent="Widget.MaterialComponents.BottomNavigationView.Colored">
+        <item name="itemTextAppearanceActive">@style/BottomNavTextActive</item>
+        <item name="itemTextAppearanceInactive">@style/BottomNavTextInactive</item>
+        <item name="android:background">@color/white</item>
+        <item name="itemIconTint">@color/black</item>
+        <item name="itemTextColor">@color/black</item>
+        <item name="itemIconSize">0dp</item>
+        <item name="itemBackground">@null</item>
+        <item name="itemRippleColor">@null</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:height">40dp</item>
+    </style>
+
+    <!-- Active text style -->
+    <style name="BottomNavTextActive" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+
+    <!-- Inactive text style -->
+    <style name="BottomNavTextInactive" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/gray</item>
+    </style>
+
+    <!-- Alert Dialog Style -->
+    <style name="AlertDialogTheme" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="android:textColorPrimary">@color/black</item>
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textColorAlertDialogListItem">@color/black</item>
+        <item name="android:textColorSecondary">@color/black</item>
+        <item name="buttonBarPositiveButtonStyle">@style/DialogButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/DialogButtonStyle</item>
+        <item name="buttonBarNeutralButtonStyle">@style/DialogButtonStyle</item>
+    </style>
+
+    <!-- Dialog Button Style -->
+    <style name="DialogButtonStyle" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/black</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Navigation View Item Style -->
+    <style name="NavigationViewStyle" parent="Widget.MaterialComponents.NavigationView">
+        <item name="itemTextAppearanceActive">@style/NavItemTextActive</item>
+        <item name="itemTextAppearanceInactive">@style/NavItemTextInactive</item>
+        <item name="itemTextColor">@color/nav_item_color</item>
+    </style>
+
+    <!-- Active Navigation Item Text Style -->
+    <style name="NavItemTextActive" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Inactive Navigation Item Text Style -->
+    <style name="NavItemTextInactive" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
+</resources>

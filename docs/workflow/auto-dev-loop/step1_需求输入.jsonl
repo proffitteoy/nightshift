@@ -1,0 +1,4 @@
+﻿{"step":"S1","name":"requirement_lock","goal":"lock one executable requirement from mockup and code reality","input_schema":{"feature_id":"string","target_tab":"TAB1|TAB2|TAB3|TAB4","mockup_refs":["string"],"scope_in":["string"],"scope_out":["string"],"acceptance":["string"],"constraints":["string"]},"output_schema":{"requirement_lock":{"feature_id":"string","target_tab":"string","scope_in":["string"],"scope_out":["string"],"acceptance":["string"],"risk":["string"]}},"gates":["at least one mockup ref","clear in/out scope","acceptance is testable"]}
+{"example":{"feature_id":"NS-TAB2-ACCORDION-V1","target_tab":"TAB2","mockup_refs":["docs/assets/mockups/tab2-daily-handover.png"],"scope_in":["实现摘要卡计数字段展示","实现4个折叠区块及默认展开规则"],"scope_out":["不重写 ChatFragment 导航关系","不做复杂图表交互"],"acceptance":["首屏显示 unresolved/high-risk/overdue/key_conclusion","Key Risk Summary 默认展开，其余折叠"],"constraints":["保持现有 report-by-user 接口向后兼容"]}}
+
+

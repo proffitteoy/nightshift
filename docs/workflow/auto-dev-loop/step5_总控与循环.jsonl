@@ -1,0 +1,2 @@
+﻿{"step":"S5","name":"loop_control","goal":"archive success or trigger replan","input_schema":{"result":"GO|NO-GO","issues":["string"],"next_action":"string"},"output_schema":{"action":"ARCHIVE|REPLAN","summary":"string","carry_over":["string"],"doc_updates":["string"]},"gates":["NO-GO => REPLAN mandatory","GO => docs updated mandatory"]}
+{"example":{"action":"REPLAN","summary":"tab3 graph generated but drill-down data incomplete","carry_over":["补齐 nodes.signature","增加 graph 缓存"],"doc_updates":["更新 current-portrait 状态矩阵","更新 tab3 验收要点"]}}

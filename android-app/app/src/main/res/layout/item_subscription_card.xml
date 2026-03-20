@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:background="@drawable/bg_panel"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/subscription_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/ns_text"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/subscription_meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/ns_muted"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/subscription_current_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_soft_panel"
+        android:paddingLeft="10dp"
+        android:paddingTop="6dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="6dp"
+        android:text="@string/subscriptions_current_repo_badge"
+        android:textColor="@color/ns_brand_dark"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/subscriptions_repo_url"
+        android:textColor="@color/ns_text"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/edit_repo_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_input_background"
+        android:padding="12dp"
+        android:textColor="@color/ns_text"
+        android:textColorHint="@color/ns_muted" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/subscriptions_email_label"
+        android:textColor="@color/ns_text"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/edit_recipient_email_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rounded_input_background"
+        android:hint="@string/subscriptions_recipient_email_hint"
+        android:inputType="textEmailAddress"
+        android:padding="12dp"
+        android:textColor="@color/ns_text"
+        android:textColorHint="@color/ns_muted" />
+
+    <CheckBox
+        android:id="@+id/edit_morning_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/subscriptions_morning_enabled"
+        android:textColor="@color/ns_text" />
+
+    <CheckBox
+        android:id="@+id/edit_panorama_checkbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/subscriptions_panorama_enabled"
+        android:textColor="@color/ns_text" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_soft_panel"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/subscriptions_delivery_mode"
+            android:textColor="@color/ns_text"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/edit_delivery_mode_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/edit_send_now_option"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/subscriptions_send_email_now"
+                android:textColor="@color/ns_text" />
+
+            <RadioButton
+                android:id="@+id/edit_send_scheduled_option"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="@string/subscriptions_send_email_scheduled"
+                android:textColor="@color/ns_text" />
+        </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/edit_schedule_time_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/subscriptions_scheduled_time"
+                android:textColor="@color/ns_text"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/edit_delivery_time_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/rounded_input_background"
+                android:clickable="true"
+                android:focusable="false"
+                android:hint="@string/subscriptions_scheduled_time_hint"
+                android:padding="12dp"
+                android:textColor="@color/ns_text"
+                android:textColorHint="@color/ns_muted" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button_send_subscription_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/subscriptions_send_email_action" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/button_select_current_repo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/subscriptions_select_current_repo" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/button_save_subscription"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/subscriptions_save" />
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="1dp" />
+
+        <Button
+            android:id="@+id/button_delete_subscription"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_button_danger"
+            android:text="@string/subscriptions_delete"
+            android:textColor="@color/ns_danger" />
+    </LinearLayout>
+</LinearLayout>

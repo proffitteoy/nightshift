@@ -1,0 +1,752 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ns_bg"
+    android:orientation="vertical"
+    tools:context=".ui.notifications.NotificationsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/ns_brand"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <Button
+            android:id="@+id/menu_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="16dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/common_menu"
+            android:drawableLeft="@drawable/ic_menu"
+            android:drawableTint="@android:color/white" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/title_notifications"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_panel"
+                android:elevation="2dp"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/subscriptions_panel_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/button_refresh_subscriptions"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/common_refresh"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/progress_bar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/auth_section_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_soft_panel"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/auth_tab4_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/auth_note_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/auth_tab4_note"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="12sp" />
+
+                    <LinearLayout
+                        android:id="@+id/auth_account_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/auth_account_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/ns_text"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/auth_account_meta"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/ns_muted"
+                            android:textSize="12sp" />
+
+                        <Button
+                            android:id="@+id/button_logout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_button_danger"
+                            android:text="@string/auth_logout"
+                            android:textColor="@color/ns_danger" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/button_change_password"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/auth_change_password" />
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="1dp" />
+
+                            <Button
+                                android:id="@+id/button_register_new_account"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/auth_register_new_account" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/auth_form_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/button_auth_mode_login"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/auth_mode_login" />
+
+                            <View
+                                android:layout_width="10dp"
+                                android:layout_height="1dp" />
+
+                            <Button
+                                android:id="@+id/button_auth_mode_register"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/auth_mode_register" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/auth_email"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+
+                        <EditText
+                            android:id="@+id/auth_email_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/rounded_input_background"
+                            android:hint="@string/auth_email_hint"
+                            android:inputType="textEmailAddress"
+                            android:padding="12dp"
+                            android:textColor="@color/ns_text"
+                            android:textColorHint="@color/ns_muted" />
+
+                        <LinearLayout
+                            android:id="@+id/auth_display_name_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:text="@string/auth_display_name"
+                                android:textColor="@color/ns_text"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/auth_display_name_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/rounded_input_background"
+                                android:hint="@string/auth_display_name_hint"
+                                android:inputType="textPersonName"
+                                android:padding="12dp"
+                                android:textColor="@color/ns_text"
+                                android:textColorHint="@color/ns_muted" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/auth_password"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+
+                        <EditText
+                            android:id="@+id/auth_password_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/rounded_input_background"
+                            android:hint="@string/auth_password_hint"
+                            android:inputType="textPassword"
+                            android:padding="12dp"
+                            android:textColor="@color/ns_text"
+                            android:textColorHint="@color/ns_muted" />
+
+                        <Button
+                            android:id="@+id/button_auth_submit"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/auth_action_login" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/button_github_oauth"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/auth_github_login" />
+
+                    <TextView
+                        android:id="@+id/auth_status_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/authenticated_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/subscriptions_runtime_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/subscriptions_runtime_note_with_clear"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_github_token"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_github_token_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_github_token_hint"
+                        android:inputType="textPassword"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_llm_key"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_llm_key_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_llm_key_hint"
+                        android:inputType="textPassword"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_base_url"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_base_url_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_model"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_model_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/subscriptions_timeout"
+                                android:textColor="@color/ns_text"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/runtime_timeout_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/rounded_input_background"
+                                android:inputType="number"
+                                android:padding="12dp"
+                                android:textColor="@color/ns_text"
+                                android:textColorHint="@color/ns_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/subscriptions_retries"
+                                android:textColor="@color/ns_text"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/runtime_retries_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/rounded_input_background"
+                                android:inputType="number"
+                                android:padding="12dp"
+                                android:textColor="@color/ns_text"
+                                android:textColorHint="@color/ns_muted" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/subscriptions_email_runtime_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_email_access_key_id"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_email_access_key_id_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_email_access_key_id_hint"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_email_access_key_secret"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_email_access_key_secret_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_email_access_key_secret_hint"
+                        android:inputType="textPassword"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_email_account_name_runtime"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_email_account_name_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_email_account_name_hint"
+                        android:inputType="textEmailAddress"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/subscriptions_email_region_id"
+                                android:textColor="@color/ns_text"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/runtime_email_region_id_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/rounded_input_background"
+                                android:hint="@string/subscriptions_email_region_id_hint"
+                                android:padding="12dp"
+                                android:textColor="@color/ns_text"
+                                android:textColorHint="@color/ns_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/subscriptions_email_endpoint_runtime"
+                                android:textColor="@color/ns_text"
+                                android:textSize="13sp" />
+
+                            <EditText
+                                android:id="@+id/runtime_email_endpoint_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/rounded_input_background"
+                                android:hint="@string/subscriptions_email_endpoint_hint"
+                                android:padding="12dp"
+                                android:textColor="@color/ns_text"
+                                android:textColorHint="@color/ns_muted" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_email_from_alias"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/runtime_email_from_alias_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_email_from_alias_hint"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/button_save_runtime"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/subscriptions_save_runtime" />
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <Button
+                            android:id="@+id/button_clear_runtime"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_button_danger"
+                            android:text="@string/subscriptions_clear_runtime"
+                            android:textColor="@color/ns_danger" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/runtime_status_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/subscription_create_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_soft_panel"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/subscriptions_create_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_repo_url"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/create_repo_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/report_repo_hint"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_email_label"
+                        android:textColor="@color/ns_text"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/create_recipient_email_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/rounded_input_background"
+                        android:hint="@string/subscriptions_recipient_email_hint"
+                        android:inputType="textEmailAddress"
+                        android:padding="12dp"
+                        android:textColor="@color/ns_text"
+                        android:textColorHint="@color/ns_muted" />
+
+                    <CheckBox
+                        android:id="@+id/create_morning_checkbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/subscriptions_morning_enabled"
+                        android:textColor="@color/ns_text" />
+
+                    <CheckBox
+                        android:id="@+id/create_panorama_checkbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/subscriptions_panorama_enabled"
+                        android:textColor="@color/ns_text" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/subscriptions_delivery_after_create_hint"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/button_create_subscription"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/subscriptions_create_action" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/current_repo_status_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_soft_panel"
+                    android:lineSpacingExtra="2dp"
+                    android:padding="12dp"
+                    android:textColor="@color/ns_text"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/subscriptions_list_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/subscriptions_empty_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/subscriptions_empty"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+                </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

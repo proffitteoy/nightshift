@@ -1,0 +1,178 @@
+﻿{
+  "meta": {
+    "doc_id": "ns_current_architecture_canvas",
+    "doc_version": 5,
+    "updated_at": "2026-03-08",
+    "audience_priority": ["llm", "human"],
+    "note": "UI mockup driven architecture snapshot"
+  },
+  "nodes": [
+    {
+      "id": "title",
+      "type": "text",
+      "x": -260,
+      "y": -420,
+      "width": 760,
+      "height": 90,
+      "text": "# NightShift Architecture Snapshot\n\nLLM-first: Current Reality vs Target (2026-03-05)"
+    },
+    {
+      "id": "target",
+      "type": "text",
+      "x": -820,
+      "y": -280,
+      "width": 460,
+      "height": 300,
+      "text": "# TARGET (4 Tabs)\n\nTab1 Weekly Trends\nTab2 Daily Handover\nTab3 Code Panorama\nTab4 Subscriptions"
+    },
+    {
+      "id": "ui_refs",
+      "type": "text",
+      "x": -820,
+      "y": 40,
+      "width": 460,
+      "height": 180,
+      "text": "# UI SOURCE\n\ntab1-weekly-trends.png -> Tab1\ntab2-daily-handover.png -> Tab2\ntab3-code-panorama.png -> Tab3\ntab4-subscriptions.png -> Tab4",
+      "color": "4"
+    },
+    {
+      "id": "current_client",
+      "type": "text",
+      "x": -260,
+      "y": -280,
+      "width": 440,
+      "height": 190,
+      "text": "# CURRENT CLIENT\n\nandroid-app Android (Kotlin + Java)\nTab1/2/4 UI aligned to mockups\nTab3 loads /showcase/atlas/\nassembleDebug: PASS"
+    },
+    {
+      "id": "current_backend",
+      "type": "text",
+      "x": -260,
+      "y": -70,
+      "width": 440,
+      "height": 190,
+      "text": "# CURRENT BACKEND\n\nLayered FastAPI architecture in place\nTab1/2/3/4 APIs available\nTab3 static assets hosted in backend/static/showcase/\nruntime-config persistence enabled"
+    },
+    {
+      "id": "current_ai",
+      "type": "text",
+      "x": -260,
+      "y": 140,
+      "width": 440,
+      "height": 130,
+      "text": "# CURRENT AI\n\nreport: openai-compatible chat.completions\nruntime params: model/temperature/max_tokens\ntrending: simulate-heavy",
+      "color": "6"
+    },
+    {
+      "id": "constraints",
+      "type": "text",
+      "x": -260,
+      "y": 290,
+      "width": 440,
+      "height": 120,
+      "text": "# HARD CONSTRAINT\n\nkeep frontend navigation skeleton\nrefactor backend first\ncontract-first changes",
+      "color": "2"
+    },
+    {
+      "id": "ws_a",
+      "type": "text",
+      "x": 280,
+      "y": -280,
+      "width": 220,
+      "height": 180,
+      "text": "# WS-A\nBackend layering\napi->service->repository->client",
+      "color": "5"
+    },
+    {
+      "id": "ws_b",
+      "type": "text",
+      "x": 520,
+      "y": -280,
+      "width": 220,
+      "height": 180,
+      "text": "# WS-B\nTab3 MVP\nrepo parse -> graph -> drawer -> drill-down",
+      "color": "1"
+    },
+    {
+      "id": "ws_c",
+      "type": "text",
+      "x": 280,
+      "y": -80,
+      "width": 220,
+      "height": 180,
+      "text": "# WS-C\nTab4 MVP\nsubscription CRUD + schedule + settings",
+      "color": "1"
+    },
+    {
+      "id": "ws_d",
+      "type": "text",
+      "x": 520,
+      "y": -80,
+      "width": 220,
+      "height": 180,
+      "text": "# WS-D\nTab1/Tab2 UI alignment\ntrend chart + summary card + accordion",
+      "color": "4"
+    },
+    {
+      "id": "ws_e",
+      "type": "text",
+      "x": 280,
+      "y": 120,
+      "width": 460,
+      "height": 160,
+      "text": "# WS-E\nLLM Ops\nprompt versioning\nparameter experiments\neval + rollback",
+      "color": "6"
+    },
+    {
+      "id": "milestone",
+      "type": "text",
+      "x": 280,
+      "y": 300,
+      "width": 460,
+      "height": 100,
+      "text": "M1 contract+security -> M2 layering -> M3 tab3 -> M4 tab4 -> M5 llm loop"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "target",
+      "toNode": "ws_d",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "align"
+    },
+    {
+      "id": "e2",
+      "fromNode": "current_backend",
+      "toNode": "ws_a",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "refactor"
+    },
+    {
+      "id": "e3",
+      "fromNode": "target",
+      "toNode": "ws_b",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "build"
+    },
+    {
+      "id": "e4",
+      "fromNode": "target",
+      "toNode": "ws_c",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "build"
+    },
+    {
+      "id": "e5",
+      "fromNode": "current_ai",
+      "toNode": "ws_e",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "upgrade"
+    }
+  ]
+}

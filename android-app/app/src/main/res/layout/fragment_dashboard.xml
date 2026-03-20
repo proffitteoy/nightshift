@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ns_bg"
+    android:orientation="vertical"
+    tools:context=".ui.dashboard.DashboardFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/ns_brand"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <Button
+            android:id="@+id/menu_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="16dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/common_menu"
+            android:drawableLeft="@drawable/ic_menu"
+            android:drawableTint="@android:color/white" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/title_dashboard"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_panel"
+            android:elevation="2dp"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/workspace_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/dashboard_workspace_title"
+                android:textColor="@color/ns_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/workspace_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/dashboard_workspace_note"
+                android:textColor="@color/ns_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/workspace_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/dashboard_status_loading"
+                android:textColor="@color/ns_brand_dark"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/workspace_url_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/ns_muted"
+                android:textSize="12sp"
+                tools:text="Workspace URL: http://127.0.0.1:8000/showcase/atlas/" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/button_refresh_workspace"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/dashboard_action_refresh" />
+
+                <View
+                    android:layout_width="10dp"
+                    android:layout_height="1dp" />
+
+                <Button
+                    android:id="@+id/button_open_external"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/dashboard_action_browser" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_soft_panel">
+
+                <WebView
+                    android:id="@+id/workspace_web_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+
+                <ProgressBar
+                    android:id="@+id/workspace_progress"
+                    style="?android:attr/progressBarStyleLarge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" />
+
+                <LinearLayout
+                    android:id="@+id/error_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/ns_soft"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="24dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/error_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/dashboard_error_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/error_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:lineSpacingExtra="2dp"
+                        android:text="@string/dashboard_error_body"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/button_retry_workspace"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/dashboard_action_retry" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- 已移除：输入网址控件，使用页面自带输入 -->
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

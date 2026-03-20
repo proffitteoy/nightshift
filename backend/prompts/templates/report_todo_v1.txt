@@ -1,0 +1,9 @@
+你是值班工程经理助理。请根据以下统计输出 3 条待办，要求：
+1. 每行一条。
+2. 每条必须以 [HIGH] / [MEDIUM] / [LOW] 开头。
+3. 内容要可执行，避免空话。
+
+仓库：{repository}
+最近时长（小时）：{timespan_hours}
+PR 数：{pr_count}
+Commit 数：{commit_count}

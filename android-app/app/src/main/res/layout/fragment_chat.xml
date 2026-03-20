@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ns_bg"
+    android:orientation="vertical"
+    tools:context=".ui.chat.ChatFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/ns_brand"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <Button
+            android:id="@+id/menu_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="16dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/common_menu"
+            android:drawableLeft="@drawable/ic_menu"
+            android:drawableTint="@android:color/white" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/title_chat"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView
+        android:id="@+id/scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_panel"
+                android:elevation="2dp"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/report_panel_title"
+                    android:textColor="@color/ns_text"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/report_repo_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/rounded_input_background"
+                    android:hint="@string/report_repo_hint"
+                    android:padding="12dp"
+                    android:textColor="@color/ns_text"
+                    android:textColorHint="@color/ns_muted" />
+
+                <TextView
+                    android:id="@+id/report_selected_repo_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="12sp"
+                    tools:text="当前选定仓库：https://github.com/owner/repo" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/button_generate_report"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/report_action_generate" />
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="1dp" />
+
+                    <Button
+                        android:id="@+id/button_load_latest_report"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/report_action_latest" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/report_note"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/report_note"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="13sp" />
+
+                <ProgressBar
+                    android:id="@+id/progress_bar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/empty_state_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/report_empty"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="13sp" />
+
+                <LinearLayout
+                    android:id="@+id/report_content_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/report_meta_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/ns_muted"
+                        android:textSize="13sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_soft_panel"
+                            android:orientation="vertical"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/report_label_unresolved"
+                                android:textColor="@color/ns_muted"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/summary_unresolved_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:textColor="@color/ns_text"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                tools:text="3" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_soft_panel"
+                            android:orientation="vertical"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/report_label_high_risk"
+                                android:textColor="@color/ns_muted"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/summary_high_risk_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:textColor="@color/ns_text"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                tools:text="1" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_soft_panel"
+                            android:orientation="vertical"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/report_label_overdue"
+                                android:textColor="@color/ns_muted"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/summary_overdue_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:textColor="@color/ns_text"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                tools:text="2" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="1dp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@drawable/bg_soft_panel"
+                            android:orientation="vertical"
+                            android:padding="10dp">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/report_label_conclusion"
+                                android:textColor="@color/ns_muted"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/summary_conclusion_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:lineSpacingExtra="2dp"
+                                android:textColor="@color/ns_text"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                tools:text="先处理高风险交接项" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_risk_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/report_section_risk"
+                            android:textColor="@color/ns_text"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/section_risk_arrow"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="▾"
+                            android:textColor="@color/ns_muted"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_risk_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:id="@+id/key_risk_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/key_risk_items"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_handover_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/report_section_handover"
+                            android:textColor="@color/ns_text"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/section_handover_arrow"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="▸"
+                            android:textColor="@color/ns_muted"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_handover_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/handover_prs_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:id="@+id/handover_commits_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/ns_text"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_qa_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/report_section_qa"
+                            android:textColor="@color/ns_text"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/section_qa_arrow"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="▾"
+                            android:textColor="@color/ns_muted"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/section_qa_content"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/bg_soft_panel"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/report_qa_note"
+                            android:textColor="@color/ns_muted"
+                            android:textSize="12sp" />
+
+                        <LinearLayout
+                            android:id="@+id/qa_messages_container"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:orientation="vertical" />
+
+                        <EditText
+                            android:id="@+id/qa_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/rounded_input_background"
+                            android:gravity="top|start"
+                            android:hint="@string/report_qa_hint"
+                            android:minHeight="96dp"
+                            android:padding="12dp"
+                            android:textColor="@color/ns_text"
+                            android:textColorHint="@color/ns_muted" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/button_send_qa"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="@string/report_qa_send" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

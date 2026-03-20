@@ -1,0 +1,17 @@
+*.pyc
+*.pyo
+*.iml
+.DS_Store
+.codex_tmp/
+.test_runtime/
+analysis_data/
+commit_data/
+reports/
+sqlite_data/
+backend/.env
+backend/**/__pycache__/
+android-app/.gradle/
+android-app/.idea/
+android-app/.vscode/
+android-app/app/build/
+android-app/local.properties

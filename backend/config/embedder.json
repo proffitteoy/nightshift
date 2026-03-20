@@ -1,0 +1,15 @@
+{
+  "provider": "siliconflow",
+  "siliconflow": {
+    "api_key": "YOUR_SILICONFLOW_API_KEY",
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "BAAI/bge-large-zh-v1.5",
+    "dimension": 1024
+  },
+  "openai": {
+    "api_key": "YOUR_OPENAI_API_KEY",
+    "base_url": "https://api.openai.com/v1",
+    "model": "text-embedding-3-large",
+    "dimension": 3072
+  }
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="light_blue">#FFE3F2FD</color>
+    <color name="light_gray">#FFF5F5F5</color>
+    <color name="light_purple">#FFF3E5F5</color>
+    <color name="gray">#FF999999</color>
+    <color name="ns_bg">#FFEEF3F9</color>
+    <color name="ns_shell">#FFF5F8FC</color>
+    <color name="ns_panel">#FFFFFFFF</color>
+    <color name="ns_border">#FFD9E2EF</color>
+    <color name="ns_brand">#FF2196F3</color>
+    <color name="ns_brand_dark">#FF167DD0</color>
+    <color name="ns_text">#FF1F2937</color>
+    <color name="ns_muted">#FF64748B</color>
+    <color name="ns_soft">#FFF8FBFF</color>
+    <color name="ns_soft_blue">#FFEEF6FF</color>
+    <color name="ns_success">#FF22C55E</color>
+    <color name="ns_danger">#FFB91C1C</color>
+    <color name="ns_danger_border">#FFFECACA</color>
+</resources>
