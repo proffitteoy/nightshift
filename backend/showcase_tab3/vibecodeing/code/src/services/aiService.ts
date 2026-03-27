@@ -454,7 +454,15 @@ async function callStructuredModel<T>(
   prompt: string,
   filteredFiles?: string[],
 ): Promise<StructuredResult<T>> {
-  // Proxy model calls to backend so frontend does not need direct API keys.
+  ensureApiKey();
+  const runtime = getRuntimeAiSettings();
+  if (!model.trim()) {
+    throw new Error('Missing AI model name. Please set it in the settings panel first.');
+  }
+  if (!runtime.baseUrl.trim()) {
+    throw new Error('Missing AI base URL. Please set it in the settings panel first.');
+  }
+
   const systemPrompt = [
     'You are a precise software-analysis assistant.',
     'Return exactly one valid JSON object.',
@@ -463,35 +471,109 @@ async function callStructuredModel<T>(
     JSON.stringify(schema, null, 2),
   ].join('\n');
 
-  const promptText = [systemPrompt, '', prompt].join('\n');
-
-  const proxyRequest = {
-    prompt: promptText,
-    prompt_name: schemaName,
+  let endpoint = '';
+  let requestBody: Record<string, unknown> = {};
+  let requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
   };
 
-  const response = await fetch('/api/llm/generate', {
+  switch (runtime.provider.transport) {
+    case 'anthropic':
+      endpoint = buildAnthropicEndpoint(runtime.baseUrl);
+      requestHeaders = {
+        ...requestHeaders,
+        'x-api-key': runtime.apiKey,
+        'anthropic-version': '2023-06-01',
+      };
+      requestBody = {
+        model,
+        max_tokens: 4096,
+        temperature: 0.1,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      };
+      break;
+    case 'gemini':
+      endpoint = buildGeminiEndpoint(runtime.baseUrl, model);
+      requestHeaders = {
+        ...requestHeaders,
+        'x-goog-api-key': runtime.apiKey,
+      };
+      requestBody = {
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+        },
+      };
+      break;
+    case 'openai-compatible':
+    default:
+      endpoint = buildOpenAICompatibleEndpoint(runtime.baseUrl);
+      if (runtime.apiKey) {
+        requestHeaders.Authorization = `Bearer ${runtime.apiKey}`;
+      }
+      requestBody = {
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        response_format: {
+          type: 'json_object',
+        },
+        temperature: 0.1,
+      };
+      break;
+  }
+
+  const response = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(proxyRequest),
+    headers: requestHeaders,
+    body: JSON.stringify(requestBody),
   });
 
-  let responseData: { answer?: string } | null = null;
+  let responseData: ChatCompletionApiResult | AnthropicMessageApiResult | GeminiGenerateContentResult | Record<string, unknown>;
   try {
     responseData = await response.json();
   } catch {
     const text = await response.text();
-    throw new Error(`LLM proxy returned non-JSON output: ${text}`);
+    throw new Error(`Model API returned non-JSON output: ${text}`);
   }
 
   if (!response.ok) {
-    const message = (responseData && (responseData as any).message) || `${response.status} ${response.statusText}`;
-    throw new Error(message as string);
+    const message =
+      (responseData as ChatCompletionApiResult)?.error?.message ||
+      (responseData as AnthropicMessageApiResult)?.error?.message ||
+      (responseData as GeminiGenerateContentResult)?.error?.message ||
+      `${response.status} ${response.statusText}`;
+    throw new Error(message);
   }
 
-  const outputText = (responseData && responseData.answer) || '';
+  const outputText =
+    runtime.provider.transport === 'anthropic'
+      ? extractAnthropicText(responseData as AnthropicMessageApiResult)
+      : runtime.provider.transport === 'gemini'
+        ? extractGeminiText(responseData as GeminiGenerateContentResult)
+        : extractOpenAICompatibleText(responseData as ChatCompletionApiResult);
   if (!outputText) {
     throw new Error('Model returned an empty response.');
   }
@@ -500,12 +582,12 @@ async function callStructuredModel<T>(
     result: parseStructuredJson<T>(outputText),
     raw: {
       request: {
-        url: '/api/llm/generate',
-        body: proxyRequest,
+        url: endpoint,
+        body: requestBody,
       },
       response: responseData,
       filteredFiles,
-      usage: undefined,
+      usage: extractUsageStats(responseData),
     },
   };
 }
