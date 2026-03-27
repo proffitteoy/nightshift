@@ -64,7 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(general_router)
     app.include_router(project_router)
     app.include_router(trending_router)
-    app.include_router(llm_proxy_router)
+        app.include_router(llm_proxy_router)
     app.include_router(code_panorama_router)
     app.include_router(subscriptions_router)
 
