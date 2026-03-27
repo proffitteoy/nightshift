@@ -17,6 +17,7 @@ from backend.api.routes.general import router as general_router
 from backend.api.routes.project import router as project_router
 from backend.api.routes.subscriptions import router as subscriptions_router
 from backend.api.routes.trending import router as trending_router
+from backend.api.routes.llm_proxy import router as llm_proxy_router
 from backend.repositories.paths import ensure_runtime_dirs
 def _load_local_env_file() -> None:
     candidate_paths = [
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(general_router)
     app.include_router(project_router)
     app.include_router(trending_router)
+        app.include_router(llm_proxy_router)
     app.include_router(code_panorama_router)
     app.include_router(subscriptions_router)
 
