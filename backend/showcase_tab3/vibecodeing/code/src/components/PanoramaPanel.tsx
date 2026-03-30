@@ -331,8 +331,11 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
     const viewWidth = layout.width + VIEW_MARGIN.left + VIEW_MARGIN.right;
     const viewHeight = layout.height + VIEW_MARGIN.top + VIEW_MARGIN.bottom;
 
+    // set explicit svg viewBox and pixel dimensions so container can scroll
     svg
       .attr('viewBox', `0 0 ${viewWidth} ${viewHeight}`)
+      .attr('width', viewWidth)
+      .attr('height', viewHeight)
       .style('font', '10px sans-serif')
       .style('user-select', 'none');
 
@@ -694,7 +697,7 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
   }, [activeModuleId, data, expandedNodeIds, manualDrillLoadingNodeId, modules, onManualDrillDown, onNodeSelect]);
 
   return (
-    <div className="w-full h-full bg-zinc-50 relative overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-zinc-50 relative flex flex-col">
       <div className="px-4 py-2 border-b border-zinc-200 bg-white flex items-center justify-between gap-3">
         <h3 className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
           <Maximize2 size={12} className="text-emerald-500" />
@@ -761,8 +764,13 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
           </button>
         </div>
       </div>
-      <div className="flex-1 relative">
-        <svg ref={svgRef} className="w-full h-full cursor-move" />
+      <div className="flex-1 relative overflow-auto">
+        <svg
+          ref={svgRef}
+          className="cursor-move"
+          preserveAspectRatio="xMinYMin meet"
+          style={{ display: 'block' }}
+        />
       </div>
     </div>
   );
