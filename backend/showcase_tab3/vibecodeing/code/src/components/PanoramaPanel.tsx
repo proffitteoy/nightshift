@@ -13,6 +13,7 @@ interface PanoramaPanelProps {
   onNodeSelect?: (node: FunctionNode) => void;
   onManualDrillDown?: (node: FunctionNode) => void;
   manualDrillLoadingNodeId?: string | null;
+  showHeader?: boolean;
 }
 
 interface LayoutNode {
@@ -214,6 +215,7 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
   onNodeSelect,
   onManualDrillDown,
   manualDrillLoadingNodeId = null,
+  showHeader = true,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -334,8 +336,10 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
     // set explicit svg viewBox and pixel dimensions so container can scroll
     svg
       .attr('viewBox', `0 0 ${viewWidth} ${viewHeight}`)
-      .attr('width', viewWidth)
-      .attr('height', viewHeight)
+      .style('width', '75%')
+      .style('height', 'auto')
+      .style('display', 'block')
+      .style('margin', '0 auto')
       .style('font', '10px sans-serif')
       .style('user-select', 'none');
 
@@ -346,6 +350,20 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 2.5])
+      // only allow zoom on wheel or multi-touch; let single-touch/pass-through for native scrolling
+      .filter((e) => {
+        const se = (e as any).sourceEvent || (e as any).sourceEvent;
+        if (!se) return true;
+        // wheel (mousewheel) should zoom
+        if (se.type === 'wheel') return true;
+        // touch: require more than one touch point (pinch) to trigger zoom
+        if (se.type === 'touchstart' || se.type === 'touchmove') {
+          return (se.touches && se.touches.length > 1) || false;
+        }
+        // mouse down should be primary button only
+        if (se.type === 'mousedown') return se.button === 0;
+        return true;
+      })
       .on('zoom', (event) => {
         zoomTransformRef.current = event.transform;
         rootGroup.attr(
@@ -356,6 +374,9 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
 
     zoomRef.current = zoom;
     svg.call(zoom);
+    // allow native touch scrolling on mobile when not handled by d3 (single-finger)
+    // allow vertical page panning with one finger, keep pinch-zoom available
+    svg.style('touch-action', 'pan-y pinch-zoom');
     svg.call(zoom.transform, zoomTransformRef.current);
 
     const isNodeHighlighted = (node: FunctionNode) => {
@@ -697,13 +718,14 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
   }, [activeModuleId, data, expandedNodeIds, manualDrillLoadingNodeId, modules, onManualDrillDown, onNodeSelect]);
 
   return (
-    <div className="w-full h-full bg-zinc-50 relative flex flex-col">
-      <div className="px-4 py-2 border-b border-zinc-200 bg-white flex items-center justify-between gap-3">
-        <h3 className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
-          <Maximize2 size={12} className="text-emerald-500" />
-          全景调用图
-        </h3>
-        <div className="flex items-center gap-1">
+    <div className="w-full h-full min-h-0 min-w-0 bg-zinc-50 relative flex flex-col">
+      {showHeader && (
+        <div className="px-4 py-2 border-b border-zinc-200 bg-white flex items-center justify-between gap-3">
+          <h3 className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
+            <Maximize2 size={12} className="text-emerald-500" />
+            全景调用图
+          </h3>
+          <div className="flex items-center gap-1">
           <button
             onClick={handleExpandAll}
             disabled={expandableNodeIds.size === 0}
@@ -741,20 +763,7 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
             <Download size={13} />
             下载 SVG
           </button>
-          <button
-            onClick={handleZoomIn}
-            className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors"
-            title="放大"
-          >
-            <ZoomIn size={14} />
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors"
-            title="缩小"
-          >
-            <ZoomOut size={14} />
-          </button>
+          {/* 放大/缩小按钮已移除，保留手指缩放 */}
           <button
             onClick={handleReset}
             className="p-1 hover:bg-zinc-100 rounded text-zinc-400 hover:text-zinc-900 transition-colors"
@@ -762,8 +771,9 @@ export const PanoramaPanel: React.FC<PanoramaPanelProps> = ({
           >
             <RotateCcw size={14} />
           </button>
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex-1 relative overflow-auto">
         <svg
           ref={svgRef}

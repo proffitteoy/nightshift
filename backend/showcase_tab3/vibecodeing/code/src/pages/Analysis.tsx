@@ -1349,6 +1349,11 @@ export const Analysis: React.FC = () => {
     setPanels((prev) => ({ ...prev, [panel]: !prev[panel] }));
   };
 
+  const [expanded, setExpanded] = React.useState({ analysis: true, fileTree: true, panorama: true });
+  const toggleExpand = (key: keyof typeof expanded) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const hasEngineeringFile = Boolean(engineeringMarkdown);
   const canReanalyzeModules = Boolean(activeSource && aiResult && functionTree && repoFiles.length > 0) && !loading && !aiLoading;
   const currentSourceType = projectState?.sourceType || (sourceParam === 'local' ? 'local' : 'github');
@@ -1356,7 +1361,7 @@ export const Analysis: React.FC = () => {
 
   return (
     <>
-      <div className="h-screen bg-zinc-50 text-zinc-900 flex flex-col overflow-hidden">
+      <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col overflow-auto">
         <header className="h-14 border-b border-zinc-200 bg-white flex items-center justify-between px-4">
           <div className="flex items-center gap-4 min-w-0">
             <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-800">
@@ -1385,10 +1390,16 @@ export const Analysis: React.FC = () => {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden">
-          <aside className="w-[360px] border-r border-zinc-200 bg-white flex flex-col">
-            <LogPanel logs={logs} workflowStatus={workflowStatus} workflowLabel={workflowLabel} />
-            <div className="p-4 border-b border-zinc-200">
+        <div className="flex-1 flex flex-col md:flex-row overflow-auto">
+          <aside className="w-full md:w-[360px] border-r border-zinc-200 bg-white flex flex-col">
+            <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">分析区域</h3>
+              <button onClick={() => toggleExpand('analysis')} className="text-[12px] text-zinc-500">{expanded.analysis ? '收起' : '展开'}</button>
+            </div>
+            {expanded.analysis && (
+              <>
+                <LogPanel logs={logs} workflowStatus={workflowStatus} workflowLabel={workflowLabel} />
+                <div className="p-4 border-b border-zinc-200">
               {isGithubProject ? (
                 <form onSubmit={handleSearchSubmit} className="relative">
                   <input value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="GitHub 仓库地址" className="w-full bg-white border border-zinc-200 rounded-lg py-2 pl-9 pr-3 text-sm" />
@@ -1458,32 +1469,46 @@ export const Analysis: React.FC = () => {
                 ) : <p className="text-[11px] text-zinc-400 italic">等待项目分析</p>}
               </section>
             </div>
+              </>
+            )}
           </aside>
 
           {panels.fileTree && (
-            <aside className="w-[280px] border-r border-zinc-200 bg-white overflow-auto">
-              <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50/60 text-[10px] uppercase tracking-widest text-zinc-400 font-bold">文件树</div>
-              <div className="p-2">{treeNodes.length > 0 ? <FileTree nodes={treeNodes} onFileSelect={handleFileSelect} selectedPath={selectedFile.path} /> : <div className="p-8 text-center text-zinc-300 text-xs italic">暂无文件显示</div>}</div>
+            <aside className="w-full md:w-[280px] border-r border-zinc-200 bg-white overflow-auto">
+              <div className="px-4 py-3 border-b border-zinc-200 bg-zinc-50/60 flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">文件树</div>
+                <button onClick={() => toggleExpand('fileTree')} className="text-[12px] text-zinc-500">{expanded.fileTree ? '收起' : '展开'}</button>
+              </div>
+              {expanded.fileTree && <div className="p-2">{treeNodes.length > 0 ? <FileTree nodes={treeNodes} onFileSelect={handleFileSelect} selectedPath={selectedFile.path} /> : <div className="p-8 text-center text-zinc-300 text-xs italic">暂无文件显示</div>}</div>}
             </aside>
           )}
 
-          <section className="flex-1 flex overflow-hidden">
+          <section className="flex-1 flex flex-col md:flex-row overflow-auto">
             {panels.codeViewer && (
-              <div className={`${panels.panorama ? 'w-1/2 border-r border-zinc-200' : 'w-full'} bg-white`}>
+              <div className={`${panels.panorama ? 'w-full md:w-1/2 md:border-r border-zinc-200' : 'w-full'} bg-white`}>
                 <CodeViewer content={selectedFile.content} filename={selectedFile.path} loading={selectedFile.loading} highlightRange={selectedFile.highlightRange} focusKey={selectedFile.focusKey} />
               </div>
             )}
             {panels.panorama && (
-              <div className={`${panels.codeViewer ? 'w-1/2' : 'w-full'} bg-zinc-50`}>
-                <PanoramaPanel
-                  data={functionTree}
-                  modules={modules}
-                  activeModuleId={activeModuleId}
-                  projectName={projectState?.projectName}
-                  onNodeSelect={handlePanoramaNodeSelect}
-                  onManualDrillDown={handleManualDrillDown}
-                  manualDrillLoadingNodeId={manualDrillNodeId}
-                />
+              <div className={`${panels.codeViewer ? 'w-full md:w-1/2' : 'w-full'} bg-zinc-50`}>
+                <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">全景调用图</h3>
+                  <button onClick={() => toggleExpand('panorama')} className="text-[12px] text-zinc-500">{expanded.panorama ? '收起' : '展开'}</button>
+                </div>
+                {expanded.panorama && (
+                  <div className="p-2">
+                    <PanoramaPanel
+                      showHeader={false}
+                      data={functionTree}
+                      modules={modules}
+                      activeModuleId={activeModuleId}
+                      projectName={projectState?.projectName}
+                      onNodeSelect={handlePanoramaNodeSelect}
+                      onManualDrillDown={handleManualDrillDown}
+                      manualDrillLoadingNodeId={manualDrillNodeId}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </section>
