@@ -18,7 +18,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
     private static final String TAG = "ApiClient";
-    public static final String BASE_URL = "http://8.163.4.22:8000/";
+    public static final String BASE_URL = "http://154.219.110.18:8000/";
     private static final long BACKEND_WARMUP_INTERVAL_MS = 15_000L;
     private static Context appContext = null;
     private static Retrofit retrofit = null;
