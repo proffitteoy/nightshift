@@ -1,0 +1,17 @@
+services:
+  nightshift-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: nightshift-backend:latest
+    container_name: nightshift-backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      NIGHTSHIFT_RUNTIME_ROOT: /app/runtime
+      NIGHTSHIFT_LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./runtime:/app/runtime
