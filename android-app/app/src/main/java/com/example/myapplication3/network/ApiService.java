@@ -5,6 +5,8 @@ import com.example.myapplication3.network.models.AuthChangePasswordRequest;
 import com.example.myapplication3.network.models.AuthRegisterRequest;
 import com.example.myapplication3.network.models.AuthTokenResponse;
 import com.example.myapplication3.network.models.DailyReportResponse;
+import com.example.myapplication3.network.models.DeepAnalysisRequest;
+import com.example.myapplication3.network.models.DeepAnalysisResponse;
 import com.example.myapplication3.network.models.GitHubOAuthPollResponse;
 import com.example.myapplication3.network.models.GitHubOAuthStartResponse;
 import com.example.myapplication3.network.models.ReportQaResponse;
@@ -122,4 +124,12 @@ public interface ApiService {
 
     @DELETE("api/subscriptions/runtime-config")
     Call<RuntimeConfigResponse> clearRuntimeConfig();
+}
+
+    /**
+     * 调用工作流对 GitHub 项目进行深度分析
+     */
+    @POST("api/project/deep-analysis")
+    Call<DeepAnalysisResponse> deepAnalysis(@Body DeepAnalysisRequest request);
+
 }

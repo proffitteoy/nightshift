@@ -40,8 +40,8 @@
     <string name="report_panel_title">晨报交接</string>
     <string name="report_repo_hint">https://github.com/owner/repo</string>
     <string name="report_action_generate">按当前仓库生成</string>
-    <string name="report_action_latest">按 URL 生成</string>
-    <string name="report_note">左侧按钮使用订阅页选定的当前仓库生成晨报；右侧按钮使用上方 URL 直接生成。结果仍基于最近一次提交与上一次提交的差异分析。</string>
+    <string name="report_action_latest">深度分析</string>
+    <string name="report_note">左侧按钮使用订阅页选定的当前仓库生成晨报；右侧按钮输入 URL 或问题，调用 AI 工作流进行深度分析（仅支持公开仓库）。</string>
     <string name="report_empty">暂无日报。</string>
     <string name="report_meta">%1$s\n%2$s</string>
     <string name="report_label_unresolved">未解决</string>
@@ -65,9 +65,9 @@
     <string name="report_ai_role">AI</string>
     <string name="report_source_format">%1$s</string>
     <string name="report_loading_generate">正在生成晨报...</string>
-    <string name="report_loading_latest">正在读取最近日报...</string>
+    <string name="report_loading_latest">正在调用 AI 工作流分析，请耐心等待...</string>
     <string name="report_error_generate">生成日报失败：%1$s</string>
-    <string name="report_error_latest">读取日报失败：%1$s</string>
+    <string name="report_error_latest">深度分析失败：%1$s</string>
     <string name="report_error_empty_question">请输入问题。</string>
     <string name="report_error_missing_report">当前没有可用晨报。</string>
     <string name="report_error_missing_selected_repo">请先在订阅页选择当前查看的仓库。</string>

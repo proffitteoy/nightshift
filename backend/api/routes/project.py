@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from backend.api.dependencies import get_optional_current_user, get_project_service
 from backend.models.schemas import (
     DailyReport,
+    DeepAnalysisRequest,
+    DeepAnalysisResponse,
     ProjectSubscribeResponse,
     RepoReportRequest,
     ReportQaResponse,
@@ -13,6 +15,7 @@ from backend.models.schemas import (
     ReportByUserResponse,
 )
 from backend.services.concurrency_guard import ConcurrencyLockTimeoutError
+from backend.clients.workflow_client import call_workflow
 from backend.services.project_service import ProjectService
 
 
@@ -119,3 +122,25 @@ def report_qa(
         raise HTTPException(status_code=400, detail={"code": "INVALID_REPORT", "message": str(exc)}) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail={"code": "REPORT_QA_FAILED", "message": str(exc)}) from exc
+
+
+@router.post("/api/project/deep-analysis", response_model=DeepAnalysisResponse)
+def deep_analysis(
+    request: DeepAnalysisRequest,
+    current_user: dict | None = Depends(get_optional_current_user),
+) -> DeepAnalysisResponse:
+    """
+    调用讯飞星火工作流对 GitHub 项目进行深度分析。
+    用户输入可以是 GitHub 仓库地址或自然语言问题。
+    """
+    user_input = str(request.user_input).strip()
+    if not user_input:
+        raise HTTPException(status_code=400, detail={"code": "EMPTY_INPUT", "message": "输入内容不能为空"})
+
+    result = call_workflow(user_input)
+
+    return DeepAnalysisResponse(
+        code=result.get("code", -1),
+        message=result.get("message", ""),
+        content=result.get("content", ""),
+    )

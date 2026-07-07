@@ -716,6 +716,20 @@ class ApiErrorDetail(BaseModel):
     message: str
 
 
+
+
+class DeepAnalysisRequest(BaseModel):
+    """用户提交仓库地址或问题，触发工作流深度分析。"""
+    user_input: str = Field(..., min_length=1, max_length=2000, description="用户输入，可以是 GitHub URL 或自然语言问题")
+
+
+class DeepAnalysisResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    code: int = 0
+    message: str = ""
+    content: str = ""
+
+
 class ApiErrorResponse(BaseModel):
     success: bool = False
     error: ApiErrorDetail

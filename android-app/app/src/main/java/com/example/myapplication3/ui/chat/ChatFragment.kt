@@ -16,6 +16,8 @@ import com.example.myapplication3.MainActivity
 import com.example.myapplication3.R
 import com.example.myapplication3.databinding.FragmentChatBinding
 import com.example.myapplication3.network.ApiClient
+import com.example.myapplication3.network.models.DeepAnalysisRequest
+import com.example.myapplication3.network.models.DeepAnalysisResponse
 import com.example.myapplication3.network.ApiErrorParser
 import com.example.myapplication3.network.models.DailyReportResponse
 import com.example.myapplication3.network.models.RepoSubscriptionRequest
@@ -36,6 +38,7 @@ class ChatFragment : Fragment() {
     private var currentReportRepoUrl: String = ""
     private val qaMessages = mutableListOf<QaMessage>()
     private var qaPending = false
+    private var deepAnalysisPending = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,7 +54,7 @@ class ChatFragment : Fragment() {
 
         binding.menuButton.setOnClickListener { openDrawer() }
         binding.buttonGenerateReport.setOnClickListener { generateReportFromSelectedRepo() }
-        binding.buttonLoadLatestReport.setOnClickListener { generateReportFromInputUrl() }
+        binding.buttonLoadLatestReport.setOnClickListener { startDeepAnalysis() }
         binding.buttonSendQa.setOnClickListener { sendQaQuestion() }
 
         bindSection(binding.sectionRiskHeader, binding.sectionRiskContent, binding.sectionRiskArrow, true)
@@ -391,8 +394,8 @@ class ChatFragment : Fragment() {
 
     private fun setLoading(loading: Boolean, message: String? = null) {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.buttonGenerateReport.isEnabled = !loading
-        binding.buttonLoadLatestReport.isEnabled = !loading
+        binding.buttonGenerateReport.isEnabled = !loading && !deepAnalysisPending
+        binding.buttonLoadLatestReport.isEnabled = !loading && !deepAnalysisPending
         if (loading && !message.isNullOrBlank()) {
             binding.emptyStateText.text = message
             binding.emptyStateText.visibility = View.VISIBLE
@@ -415,6 +418,56 @@ class ChatFragment : Fragment() {
         } else {
             ""
         }
+    }
+
+
+    /**
+     * 点击"深度分析"按钮：自动用当前订阅仓库的 URL 拼接输入，
+     * 发送给讯飞工作流进行 AI 深度分析。
+     */
+    private fun startDeepAnalysis() {
+        val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty()
+        if (repoUrl.isBlank()) {
+            showToast(getString(R.string.report_error_missing_selected_repo))
+            return
+        }
+
+        val userInput = "分析 $repoUrl"
+        startDeepAnalysis(userInput)
+    }
+
+    private fun startDeepAnalysis(userInput: String) {
+        deepAnalysisPending = true
+        setLoading(true, getString(R.string.report_loading_latest))
+
+        val request = DeepAnalysisRequest(userInput)
+        ApiClient.getApiService().deepAnalysis(request)
+            .enqueue(object : Callback<DeepAnalysisResponse> {
+                override fun onResponse(
+                    call: Call<DeepAnalysisResponse>,
+                    response: Response<DeepAnalysisResponse>,
+                ) {
+                    deepAnalysisPending = false
+                    setLoading(false)
+                    if (response.isSuccessful && response.body() != null) {
+                        val body = response.body()!!
+                        val resultText = body.content.ifBlank { body.message.ifBlank { "分析完成，但未返回内容" } }
+                        // 将结果追加到 QA 区域显示
+                        qaMessages.add(QaMessage(role = ROLE_USER, text = userInput))
+                        qaMessages.add(QaMessage(role = ROLE_ASSISTANT, text = resultText, source = "workflow"))
+                        renderQaMessages()
+                        scrollToBottom()
+                    } else {
+                        showErrorState(getString(R.string.report_error_latest, ApiErrorParser.parse(response, "request failed")))
+                    }
+                }
+
+                override fun onFailure(call: Call<DeepAnalysisResponse>, t: Throwable) {
+                    deepAnalysisPending = false
+                    setLoading(false)
+                    showErrorState(getString(R.string.report_error_latest, t.message ?: "unknown"))
+                }
+            })
     }
 
     private fun scrollToBottom() {
