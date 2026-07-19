@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from backend.api.dependencies import get_optional_current_user, get_project_service
 from backend.models.schemas import (
@@ -15,7 +18,7 @@ from backend.models.schemas import (
     ReportByUserResponse,
 )
 from backend.services.concurrency_guard import ConcurrencyLockTimeoutError
-from backend.clients.workflow_client import call_workflow
+from backend.clients.workflow_client import call_workflow, stream_workflow
 from backend.services.project_service import ProjectService
 
 
@@ -144,3 +147,74 @@ def deep_analysis(
         message=result.get("message", ""),
         content=result.get("content", ""),
     )
+
+
+@router.post("/api/project/deep-analysis/stream")
+def deep_analysis_stream(
+    request: DeepAnalysisRequest,
+    current_user: dict | None = Depends(get_optional_current_user),
+) -> StreamingResponse:
+    user_input = str(request.user_input).strip()
+    if not user_input:
+        raise HTTPException(status_code=400, detail={"code": "EMPTY_INPUT", "message": "input cannot be empty"})
+
+    def event_stream():
+        yield _format_sse({"type": "start", "content": "正在启动工作流分析..."})
+
+        for event in stream_workflow(user_input):
+            payload = _normalize_workflow_stream_event(event)
+            yield _format_sse(payload)
+            if payload.get("type") in {"done", "error"}:
+                return
+
+        yield _format_sse({"type": "done"})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _format_sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def _normalize_workflow_stream_event(event: dict) -> dict:
+    if not isinstance(event, dict):
+        return {"type": "message", "content": str(event)}
+
+    event_type = str(event.get("type") or "").strip()
+    if event_type in {"done", "error"}:
+        return event
+
+    choices = event.get("choices") or []
+    delta = {}
+    if choices and isinstance(choices[0], dict):
+        delta = choices[0].get("delta") or {}
+
+    workflow_step = event.get("workflow_step") or event.get("workflowStep") or {}
+    content = (
+        delta.get("content")
+        or event.get("content")
+        or event.get("message")
+        or ""
+    )
+
+    payload = {
+        "type": "message",
+        "content": str(content),
+    }
+    if isinstance(workflow_step, dict):
+        if workflow_step.get("seq") is not None:
+            payload["seq"] = workflow_step.get("seq")
+        if workflow_step.get("progress") is not None:
+            payload["progress"] = workflow_step.get("progress")
+        if workflow_step.get("name") is not None:
+            payload["stage"] = workflow_step.get("name")
+
+    return payload

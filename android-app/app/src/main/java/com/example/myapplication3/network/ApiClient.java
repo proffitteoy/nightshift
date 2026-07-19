@@ -23,6 +23,7 @@ public class ApiClient {
     private static Context appContext = null;
     private static Retrofit retrofit = null;
     private static ApiService apiService = null;
+    private static OkHttpClient okHttpClient = null;
     private static volatile long lastWarmupAtMs = 0L;
 
     public static synchronized void initialize(Context context) {
@@ -44,6 +45,16 @@ public class ApiClient {
             apiService = retrofit.create(ApiService.class);
         }
         return apiService;
+    }
+
+    public static synchronized OkHttpClient getHttpClient() {
+        if (appContext == null) {
+            throw new IllegalStateException("ApiClient.initialize(context) must be called before getHttpClient()");
+        }
+        if (okHttpClient == null) {
+            okHttpClient = createOkHttpClient();
+        }
+        return okHttpClient;
     }
 
     public static void warmUpBackend() {
@@ -71,6 +82,14 @@ public class ApiClient {
     }
 
     private static Retrofit createRetrofit() {
+        return new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .client(getHttpClient())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+    }
+
+    private static OkHttpClient createOkHttpClient() {
         boolean debugLoggingEnabled =
                 (appContext.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
@@ -78,18 +97,12 @@ public class ApiClient {
                 debugLoggingEnabled ? HttpLoggingInterceptor.Level.BASIC : HttpLoggingInterceptor.Level.NONE
         );
 
-        OkHttpClient client = new OkHttpClient.Builder()
+        return new OkHttpClient.Builder()
                 .addInterceptor(new AuthInterceptor(appContext))
                 .addInterceptor(loggingInterceptor)
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(180, TimeUnit.SECONDS)
+                .readTimeout(0, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
-                .build();
-
-        return new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
                 .build();
     }
 }

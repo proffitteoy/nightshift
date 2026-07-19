@@ -72,7 +72,9 @@
                     android:layout_marginTop="12dp"
                     android:background="@drawable/rounded_input_background"
                     android:hint="@string/report_repo_hint"
+                    android:inputType="textUri"
                     android:padding="12dp"
+                    android:singleLine="true"
                     android:textColor="@color/ns_text"
                     android:textColorHint="@color/ns_muted" />
 
@@ -476,6 +478,94 @@
                                 android:text="@string/report_qa_send" />
                         </LinearLayout>
                     </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/deep_analysis_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_panel"
+                android:elevation="2dp"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/workflow_chat_title"
+                        android:textColor="@color/ns_text"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/button_close_deep_analysis"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/workflow_chat_back" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/deep_analysis_repo_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="12sp"
+                    tools:text="当前深度分析仓库：https://github.com/owner/repo" />
+
+                <TextView
+                    android:id="@+id/deep_analysis_note"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/workflow_chat_seed"
+                    android:textColor="@color/ns_muted"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:id="@+id/deep_analysis_messages_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="vertical" />
+
+                <EditText
+                    android:id="@+id/deep_question_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/rounded_input_background"
+                    android:gravity="top|start"
+                    android:hint="@string/workflow_question_hint"
+                    android:minHeight="96dp"
+                    android:padding="12dp"
+                    android:textColor="@color/ns_text"
+                    android:textColorHint="@color/ns_muted" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/button_send_deep_question"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/report_qa_send" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

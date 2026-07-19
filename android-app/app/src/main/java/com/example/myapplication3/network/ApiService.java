@@ -124,7 +124,6 @@ public interface ApiService {
 
     @DELETE("api/subscriptions/runtime-config")
     Call<RuntimeConfigResponse> clearRuntimeConfig();
-}
 
     /**
      * 调用工作流对 GitHub 项目进行深度分析

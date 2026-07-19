@@ -41,6 +41,15 @@
     <string name="report_repo_hint">https://github.com/owner/repo</string>
     <string name="report_action_generate">按当前仓库生成</string>
     <string name="report_action_latest">深度分析</string>
+    <string name="workflow_chat_title">晨报交接 AI 对话</string>
+    <string name="workflow_chat_seed">点击“深度分析”后，我会调用工作流生成当前仓库的晨报交接分析；你也可以在下方继续追问。</string>
+    <string name="workflow_initial_user_message">请对 %1$s 做晨报交接深度分析。</string>
+    <string name="workflow_question_hint">继续追问工作流...</string>
+    <string name="workflow_chat_back">返回报告</string>
+    <string name="workflow_chat_starting">正在启动工作流分析...</string>
+    <string name="workflow_chat_waiting">正在分析，等待工作流输出...</string>
+    <string name="workflow_chat_empty_result">分析完成，但工作流没有返回可展示内容。</string>
+    <string name="workflow_chat_pending">上一轮工作流还在输出，请稍等。</string>
     <string name="report_note">左侧按钮使用订阅页选定的当前仓库生成晨报；右侧按钮输入 URL 或问题，调用 AI 工作流进行深度分析（仅支持公开仓库）。</string>
     <string name="report_empty">暂无日报。</string>
     <string name="report_meta">%1$s\n%2$s</string>

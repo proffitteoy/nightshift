@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Dict
+from typing import Dict, Iterator
 
 import httpx
 
@@ -118,4 +118,72 @@ def call_workflow(user_input: str, *, stream: bool = False) -> Dict[str, object]
             "code": -4,
             "message": f"工作流调用异常: {str(exc)}",
             "content": "",
+        }
+
+
+def stream_workflow(user_input: str) -> Iterator[Dict[str, object]]:
+    api_key, api_secret, flow_id = _get_workflow_credentials()
+
+    if not api_key or not api_secret or not flow_id:
+        yield {
+            "type": "error",
+            "message": "workflow API credentials are not configured",
+        }
+        return
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}:{api_secret}",
+    }
+    body = {
+        "flow_id": flow_id,
+        "stream": True,
+        "parameters": {
+            "AGENT_USER_INPUT": user_input,
+        },
+    }
+
+    try:
+        with httpx.Client(timeout=None) as client:
+            with client.stream("POST", WORKFLOW_API_URL, headers=headers, json=body) as response:
+                response.raise_for_status()
+                for raw_line in response.iter_lines():
+                    if not raw_line:
+                        continue
+
+                    line = raw_line.strip()
+                    if line.startswith("data:"):
+                        line = line[len("data:") :].strip()
+                    if not line:
+                        continue
+                    if line == "[DONE]":
+                        yield {"type": "done"}
+                        return
+
+                    try:
+                        yield json.loads(line)
+                    except json.JSONDecodeError:
+                        yield {
+                            "type": "message",
+                            "content": line,
+                        }
+
+        yield {"type": "done"}
+    except httpx.TimeoutException:
+        LOGGER.error("workflow stream timeout")
+        yield {
+            "type": "error",
+            "message": "workflow stream timeout",
+        }
+    except httpx.HTTPStatusError as exc:
+        LOGGER.error("workflow stream HTTP error: status=%s body=%s", exc.response.status_code, exc.response.text[:500])
+        yield {
+            "type": "error",
+            "message": f"workflow API request failed: HTTP {exc.response.status_code}",
+        }
+    except Exception as exc:
+        LOGGER.error("workflow stream failed: %s", exc)
+        yield {
+            "type": "error",
+            "message": f"workflow stream failed: {str(exc)}",
         }

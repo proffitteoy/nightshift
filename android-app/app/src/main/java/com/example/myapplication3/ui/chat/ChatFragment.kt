@@ -1,6 +1,5 @@
 package com.example.myapplication3.ui.chat
 
-import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -16,16 +15,22 @@ import com.example.myapplication3.MainActivity
 import com.example.myapplication3.R
 import com.example.myapplication3.databinding.FragmentChatBinding
 import com.example.myapplication3.network.ApiClient
-import com.example.myapplication3.network.models.DeepAnalysisRequest
-import com.example.myapplication3.network.models.DeepAnalysisResponse
 import com.example.myapplication3.network.ApiErrorParser
 import com.example.myapplication3.network.models.DailyReportResponse
 import com.example.myapplication3.network.models.RepoSubscriptionRequest
 import com.example.myapplication3.network.models.ReportQaResponse
 import com.example.myapplication3.ui.CurrentRepoStore
+import okhttp3.Call as OkHttpCall
+import okhttp3.Callback as OkHttpCallback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response as OkHttpResponse
+import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.IOException
 import kotlin.math.roundToInt
 
 class ChatFragment : Fragment() {
@@ -36,9 +41,12 @@ class ChatFragment : Fragment() {
     private var currentReport: DailyReportResponse.DailyReport? = null
     private var currentReportKey: String = ""
     private var currentReportRepoUrl: String = ""
-    private val qaMessages = mutableListOf<QaMessage>()
-    private var qaPending = false
+    private val reportQaMessages = mutableListOf<QaMessage>()
+    private var reportQaPending = false
+
+    private val deepAnalysisMessages = mutableListOf<QaMessage>()
     private var deepAnalysisPending = false
+    private var deepAnalysisStreamCall: OkHttpCall? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -56,6 +64,8 @@ class ChatFragment : Fragment() {
         binding.buttonGenerateReport.setOnClickListener { generateReportFromSelectedRepo() }
         binding.buttonLoadLatestReport.setOnClickListener { startDeepAnalysis() }
         binding.buttonSendQa.setOnClickListener { sendQaQuestion() }
+        binding.buttonCloseDeepAnalysis.setOnClickListener { hideDeepAnalysisPanel() }
+        binding.buttonSendDeepQuestion.setOnClickListener { sendDeepAnalysisQuestion() }
 
         bindSection(binding.sectionRiskHeader, binding.sectionRiskContent, binding.sectionRiskArrow, true)
         bindSection(binding.sectionHandoverHeader, binding.sectionHandoverContent, binding.sectionHandoverArrow, false)
@@ -161,7 +171,7 @@ class ChatFragment : Fragment() {
         )
 
         resetQaStateIfNeeded(report)
-        renderQaMessages()
+        renderReportQaMessages()
         scrollToBottom()
     }
 
@@ -172,9 +182,10 @@ class ChatFragment : Fragment() {
         currentReport = null
         currentReportKey = ""
         currentReportRepoUrl = ""
-        qaMessages.clear()
-        qaPending = false
+        reportQaMessages.clear()
+        reportQaPending = false
         binding.qaInput.setText("")
+        hideDeepAnalysisPanel(clearConversation = true)
     }
 
     private fun showErrorState(message: String) {
@@ -197,8 +208,8 @@ class ChatFragment : Fragment() {
         }
 
         currentReportKey = key
-        qaMessages.clear()
-        qaMessages.add(
+        reportQaMessages.clear()
+        reportQaMessages.add(
             QaMessage(
                 role = ROLE_ASSISTANT,
                 text = getString(
@@ -209,7 +220,7 @@ class ChatFragment : Fragment() {
                 source = SOURCE_RULES,
             ),
         )
-        qaPending = false
+        reportQaPending = false
         binding.qaInput.setText("")
     }
 
@@ -225,10 +236,10 @@ class ChatFragment : Fragment() {
             return
         }
 
-        qaMessages.add(QaMessage(role = ROLE_USER, text = question))
-        qaPending = true
+        reportQaMessages.add(QaMessage(role = ROLE_USER, text = question))
+        reportQaPending = true
         binding.qaInput.setText("")
-        renderQaMessages()
+        renderReportQaMessages()
 
         val payload = mutableMapOf<String, Any>(
             "report" to report,
@@ -244,10 +255,10 @@ class ChatFragment : Fragment() {
                 call: Call<ReportQaResponse>,
                 response: Response<ReportQaResponse>,
             ) {
-                qaPending = false
+                reportQaPending = false
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()
-                    qaMessages.add(
+                    reportQaMessages.add(
                         QaMessage(
                             role = ROLE_ASSISTANT,
                             text = body?.answer?.ifBlank { "当前没有返回可展示的回答。" } ?: "当前没有返回可展示的回答。",
@@ -255,7 +266,7 @@ class ChatFragment : Fragment() {
                         ),
                     )
                 } else {
-                    qaMessages.add(
+                    reportQaMessages.add(
                         QaMessage(
                             role = ROLE_ASSISTANT,
                             text = getString(
@@ -266,29 +277,29 @@ class ChatFragment : Fragment() {
                         ),
                     )
                 }
-                renderQaMessages()
+                renderReportQaMessages()
             }
 
             override fun onFailure(call: Call<ReportQaResponse>, t: Throwable) {
-                qaPending = false
-                qaMessages.add(
+                reportQaPending = false
+                reportQaMessages.add(
                     QaMessage(
                         role = ROLE_ASSISTANT,
                         text = getString(R.string.report_qa_failure, t.message ?: "unknown"),
                         source = SOURCE_RULES,
                     ),
                 )
-                renderQaMessages()
+                renderReportQaMessages()
             }
         })
     }
 
-    private fun renderQaMessages() {
+    private fun renderReportQaMessages() {
         binding.qaMessagesContainer.removeAllViews()
-        qaMessages.forEach { binding.qaMessagesContainer.addView(createQaMessageView(it)) }
-        if (qaPending) {
+        reportQaMessages.forEach { binding.qaMessagesContainer.addView(createMessageView(it)) }
+        if (reportQaPending) {
             binding.qaMessagesContainer.addView(
-                createQaMessageView(
+                createMessageView(
                     QaMessage(
                         role = ROLE_ASSISTANT,
                         text = getString(R.string.report_qa_loading),
@@ -298,11 +309,11 @@ class ChatFragment : Fragment() {
                 ),
             )
         }
-        binding.buttonSendQa.isEnabled = !qaPending
+        binding.buttonSendQa.isEnabled = !reportQaPending
         scrollToBottom()
     }
 
-    private fun createQaMessageView(message: QaMessage): View {
+    private fun createMessageView(message: QaMessage): View {
         val container = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             background = ContextCompat.getDrawable(
@@ -329,11 +340,7 @@ class ChatFragment : Fragment() {
         }
 
         val roleLabel = TextView(requireContext()).apply {
-            text = if (message.role == ROLE_USER) {
-                getString(R.string.report_user_role)
-            } else {
-                getString(R.string.report_ai_role)
-            }
+            text = if (message.role == ROLE_USER) getString(R.string.report_user_role) else getString(R.string.report_ai_role)
             setTextColor(ContextCompat.getColor(requireContext(), R.color.ns_muted))
             textSize = 12f
         }
@@ -396,6 +403,7 @@ class ChatFragment : Fragment() {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         binding.buttonGenerateReport.isEnabled = !loading && !deepAnalysisPending
         binding.buttonLoadLatestReport.isEnabled = !loading && !deepAnalysisPending
+        binding.buttonSendDeepQuestion.isEnabled = !loading && !deepAnalysisPending
         if (loading && !message.isNullOrBlank()) {
             binding.emptyStateText.text = message
             binding.emptyStateText.visibility = View.VISIBLE
@@ -420,54 +428,244 @@ class ChatFragment : Fragment() {
         }
     }
 
-
-    /**
-     * 点击"深度分析"按钮：自动用当前订阅仓库的 URL 拼接输入，
-     * 发送给讯飞工作流进行 AI 深度分析。
-     */
     private fun startDeepAnalysis() {
+        if (deepAnalysisPending) {
+            showToast(getString(R.string.workflow_chat_pending))
+            return
+        }
+
         val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty()
         if (repoUrl.isBlank()) {
             showToast(getString(R.string.report_error_missing_selected_repo))
             return
         }
 
-        val userInput = "分析 $repoUrl"
-        startDeepAnalysis(userInput)
+        beginDeepAnalysisSession(repoUrl)
+        val userInput = getString(R.string.workflow_initial_user_message, repoUrl)
+        val workflowInput = buildDeepWorkflowInput(userInput, includeHistory = false)
+        runDeepAnalysis(userInput, workflowInput)
     }
 
-    private fun startDeepAnalysis(userInput: String) {
+    private fun beginDeepAnalysisSession(repoUrl: String) {
+        deepAnalysisPending = false
+        deepAnalysisStreamCall?.cancel()
+        deepAnalysisStreamCall = null
+        deepAnalysisMessages.clear()
+        deepAnalysisMessages.add(
+            QaMessage(
+                role = ROLE_ASSISTANT,
+                text = getString(R.string.workflow_chat_seed),
+                source = WORKFLOW_SOURCE,
+            ),
+        )
+        binding.deepAnalysisRepoText.text = getString(R.string.report_selected_repo, repoUrl)
+        binding.deepQuestionInput.setText("")
+        binding.deepAnalysisPanel.visibility = View.VISIBLE
+        renderDeepAnalysisMessages()
+    }
+
+    private fun hideDeepAnalysisPanel(clearConversation: Boolean = false) {
+        binding.deepAnalysisPanel.visibility = View.GONE
+        if (clearConversation) {
+            deepAnalysisMessages.clear()
+            deepAnalysisPending = false
+            deepAnalysisStreamCall?.cancel()
+            deepAnalysisStreamCall = null
+            binding.deepQuestionInput.setText("")
+        }
+    }
+
+    private fun sendDeepAnalysisQuestion() {
+        val question = binding.deepQuestionInput.text?.toString()?.trim().orEmpty()
+        if (question.isBlank()) {
+            showToast(getString(R.string.report_error_empty_question))
+            return
+        }
+        if (deepAnalysisPending) {
+            showToast(getString(R.string.workflow_chat_pending))
+            return
+        }
+        if (deepAnalysisMessages.isEmpty()) {
+            val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty()
+            if (repoUrl.isBlank()) {
+                showToast(getString(R.string.report_error_missing_selected_repo))
+                return
+            }
+            beginDeepAnalysisSession(repoUrl)
+        }
+
+        binding.deepQuestionInput.setText("")
+        val workflowInput = buildDeepWorkflowInput(question, includeHistory = true)
+        runDeepAnalysis(question, workflowInput)
+    }
+
+    private fun buildDeepWorkflowInput(latestQuestion: String, includeHistory: Boolean): String {
+        val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty().ifBlank {
+            currentReportRepoUrl
+        }
+        if (!includeHistory) {
+            return latestQuestion
+        }
+
+        val history = deepAnalysisMessages
+            .filter { !it.pending }
+            .takeLast(MAX_HISTORY_MESSAGES)
+            .joinToString("\n") { message ->
+                val role = if (message.role == ROLE_USER) "用户" else "AI"
+                "$role：${message.text}"
+            }
+
+        return buildString {
+            append("请继续以大模型对话方式回答晨报交接深度分析追问。")
+            if (repoUrl.isNotBlank()) {
+                append("\n当前仓库：").append(repoUrl)
+            }
+            if (history.isNotBlank()) {
+                append("\n\n已有对话：\n").append(history)
+            }
+            append("\n\n用户新问题：").append(latestQuestion)
+        }
+    }
+
+    private fun runDeepAnalysis(visibleUserMessage: String, workflowInput: String) {
         deepAnalysisPending = true
-        setLoading(true, getString(R.string.report_loading_latest))
+        setLoading(true)
+        deepAnalysisMessages.add(QaMessage(role = ROLE_USER, text = visibleUserMessage))
+        deepAnalysisMessages.add(
+            QaMessage(
+                role = ROLE_ASSISTANT,
+                text = getString(R.string.workflow_chat_starting),
+                source = WORKFLOW_SOURCE,
+                pending = true,
+            ),
+        )
+        renderDeepAnalysisMessages()
 
-        val request = DeepAnalysisRequest(userInput)
-        ApiClient.getApiService().deepAnalysis(request)
-            .enqueue(object : Callback<DeepAnalysisResponse> {
-                override fun onResponse(
-                    call: Call<DeepAnalysisResponse>,
-                    response: Response<DeepAnalysisResponse>,
-                ) {
-                    deepAnalysisPending = false
-                    setLoading(false)
-                    if (response.isSuccessful && response.body() != null) {
-                        val body = response.body()!!
-                        val resultText = body.content.ifBlank { body.message.ifBlank { "分析完成，但未返回内容" } }
-                        // 将结果追加到 QA 区域显示
-                        qaMessages.add(QaMessage(role = ROLE_USER, text = userInput))
-                        qaMessages.add(QaMessage(role = ROLE_ASSISTANT, text = resultText, source = "workflow"))
-                        renderQaMessages()
-                        scrollToBottom()
-                    } else {
-                        showErrorState(getString(R.string.report_error_latest, ApiErrorParser.parse(response, "request failed")))
+        val payload = JSONObject()
+            .put("user_input", workflowInput)
+            .toString()
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(ApiClient.BASE_URL + "api/project/deep-analysis/stream")
+            .post(payload)
+            .build()
+
+        deepAnalysisStreamCall?.cancel()
+        deepAnalysisStreamCall = ApiClient.getHttpClient().newCall(request)
+        deepAnalysisStreamCall?.enqueue(object : OkHttpCallback {
+            override fun onResponse(call: OkHttpCall, response: OkHttpResponse) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        val error = response.body?.string().orEmpty().ifBlank { "HTTP ${response.code}" }
+                        activity?.runOnUiThread { finishDeepAnalysisWithError(error) }
+                        return
                     }
-                }
 
-                override fun onFailure(call: Call<DeepAnalysisResponse>, t: Throwable) {
-                    deepAnalysisPending = false
-                    setLoading(false)
-                    showErrorState(getString(R.string.report_error_latest, t.message ?: "unknown"))
+                    val source = response.body?.source()
+                    if (source == null) {
+                        activity?.runOnUiThread { finishDeepAnalysisWithError("empty stream response") }
+                        return
+                    }
+
+                    val builder = StringBuilder()
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: continue
+                        if (!line.startsWith("data:")) {
+                            continue
+                        }
+
+                        val rawJson = line.removePrefix("data:").trim()
+                        if (rawJson.isBlank()) {
+                            continue
+                        }
+
+                        val event = JSONObject(rawJson)
+                        val type = event.optString("type")
+                        if (type == "done") {
+                            activity?.runOnUiThread { finishDeepAnalysis(builder.toString()) }
+                            return
+                        }
+                        if (type == "error") {
+                            val message = event.optString("message", "workflow stream failed")
+                            activity?.runOnUiThread { finishDeepAnalysisWithError(message) }
+                            return
+                        }
+
+                        val stage = event.optString("stage")
+                        val content = event.optString("content")
+                        if (stage.isNotBlank()) {
+                            builder.append("\n\n【").append(stage).append("】\n")
+                        }
+                        if (content.isNotBlank()) {
+                            builder.append(content)
+                        }
+
+                        val displayText = builder.toString().ifBlank {
+                            getString(R.string.workflow_chat_waiting)
+                        }
+                        activity?.runOnUiThread {
+                            updateDeepAnalysisMessage(displayText, pending = true)
+                        }
+                    }
+
+                    activity?.runOnUiThread { finishDeepAnalysis(builder.toString()) }
                 }
-            })
+            }
+
+            override fun onFailure(call: OkHttpCall, e: IOException) {
+                if (call.isCanceled()) {
+                    return
+                }
+                activity?.runOnUiThread {
+                    finishDeepAnalysisWithError(e.message ?: "unknown")
+                }
+            }
+        })
+    }
+
+    private fun renderDeepAnalysisMessages() {
+        binding.deepAnalysisMessagesContainer.removeAllViews()
+        deepAnalysisMessages.forEach { binding.deepAnalysisMessagesContainer.addView(createMessageView(it)) }
+        binding.buttonSendDeepQuestion.isEnabled = !deepAnalysisPending
+        scrollToBottom()
+    }
+
+    private fun updateDeepAnalysisMessage(text: String, pending: Boolean) {
+        val index = deepAnalysisMessages.indexOfLast { it.role == ROLE_ASSISTANT && it.source == WORKFLOW_SOURCE }
+        if (index >= 0) {
+            deepAnalysisMessages[index] = deepAnalysisMessages[index].copy(text = text, pending = pending)
+        } else {
+            deepAnalysisMessages.add(
+                QaMessage(
+                    role = ROLE_ASSISTANT,
+                    text = text,
+                    source = WORKFLOW_SOURCE,
+                    pending = pending,
+                ),
+            )
+        }
+        renderDeepAnalysisMessages()
+    }
+
+    private fun finishDeepAnalysis(text: String) {
+        deepAnalysisPending = false
+        deepAnalysisStreamCall = null
+        setLoading(false)
+        updateDeepAnalysisMessage(
+            text.ifBlank { getString(R.string.workflow_chat_empty_result) },
+            pending = false,
+        )
+    }
+
+    private fun finishDeepAnalysisWithError(message: String) {
+        deepAnalysisPending = false
+        deepAnalysisStreamCall = null
+        setLoading(false)
+        updateDeepAnalysisMessage(
+            getString(R.string.report_error_latest, message),
+            pending = false,
+        )
+        showToast(getString(R.string.report_error_latest, message))
     }
 
     private fun scrollToBottom() {
@@ -482,6 +680,8 @@ class ChatFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        deepAnalysisStreamCall?.cancel()
+        deepAnalysisStreamCall = null
         _binding = null
     }
 
@@ -497,5 +697,7 @@ class ChatFragment : Fragment() {
         private const val ROLE_USER = "user"
         private const val ROLE_ASSISTANT = "assistant"
         private const val SOURCE_RULES = "rules"
+        private const val WORKFLOW_SOURCE = "workflow"
+        private const val MAX_HISTORY_MESSAGES = 8
     }
 }
