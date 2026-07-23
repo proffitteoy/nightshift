@@ -148,6 +148,10 @@ def _load_github_repo(token: Optional[str], repo_full_name: str):
         ) from exc
 
 
+def load_github_repository(token: Optional[str], repo_full_name: str):
+    return _load_github_repo(token=token, repo_full_name=repo_full_name)
+
+
 def _extract_commit_summary(commit) -> Dict[str, object]:
     stats = getattr(commit, "stats", None)
     commit_time = ""

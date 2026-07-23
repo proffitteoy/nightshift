@@ -154,6 +154,33 @@ class CodePanoramaRequest(BaseModel):
         return normalized or None
 
 
+class WorkflowAnalysisRequest(BaseModel):
+    model_config = INPUT_MODEL_CONFIG
+    repo_url: str
+    depth: str = Field(default="标准", min_length=1, max_length=20)
+    intent: Optional[str] = Field(default=None, max_length=60)
+    focus_areas: Optional[str] = Field(default=None, max_length=300)
+    queries: Optional[str] = Field(default=None, max_length=600)
+
+    @field_validator("repo_url")
+    @classmethod
+    def validate_repo_url(cls, value: str) -> str:
+        return normalize_github_repo_url(value)
+
+    @field_validator("depth")
+    @classmethod
+    def validate_depth(cls, value: str) -> str:
+        return sanitize_untrusted_text(value, max_length=20) or "标准"
+
+    @field_validator("intent", "focus_areas", "queries")
+    @classmethod
+    def validate_optional_text(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        normalized = sanitize_untrusted_text(value, max_length=600, allow_empty=True)
+        return normalized or None
+
+
 SubscriptionFrequency = Literal["daily", "weekly", "weekday"]
 UpdateStrategy = Literal["incremental", "full"]
 DeliveryMode = Literal["instant", "scheduled"]
@@ -691,6 +718,45 @@ class CodePanoramaResponse(BaseModel):
     nodes: List[CodePanoramaNode]
     edges: List[CodePanoramaEdge]
     meta: CodePanoramaMeta
+
+
+class WorkflowAnalysisFileItem(BaseModel):
+    path: str
+    type: str = "file"
+    size: int = 0
+    language: str = ""
+
+
+class WorkflowAnalysisKeyFileDetail(BaseModel):
+    path: str
+    language: str = ""
+    size: int = 0
+    score: int = 0
+    summary: str = ""
+    definitions: List[str] = Field(default_factory=list)
+    dependencies: List[str] = Field(default_factory=list)
+    issues: List[str] = Field(default_factory=list)
+
+
+class WorkflowAnalysisResponse(BaseModel):
+    repository: str
+    default_branch: str
+    file_tree: List[WorkflowAnalysisFileItem]
+    file_tree_text: str
+    language: str
+    languages: str
+    frameworks: str
+    build_tools: str
+    entry_files: str
+    total_files: str
+    key_files: List[str]
+    key_file_details: str
+    key_file_paths: str
+    read_plan: str
+    total_key_files: str
+    merged_files: str
+    merged_context: str
+    file_count: str
 
 
 class SubscriptionResponse(BaseModel):

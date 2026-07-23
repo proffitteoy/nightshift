@@ -22,6 +22,7 @@
 
 ## code_panorama
 - `POST /api/repo/code-panorama`：生成函数节点与调用边（MVP 图谱）。
+- `POST /api/repo/workflow-analysis`：供讯飞工作流调用，按仓库 URL 提取文件树、识别技术栈、筛选关键文件并生成合并上下文，替代工作流内 MCP 逐文件分析链路。
 
 ## subscriptions
 - `GET /api/subscriptions`：查询订阅列表。

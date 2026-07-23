@@ -42,6 +42,7 @@
 - `POST /api/project/report-by-user`
 - `POST /api/project/report-qa`
 - `POST /api/repo/code-panorama`
+- `POST /api/repo/workflow-analysis`
 - `GET /api/subscriptions`
 - `GET /api/subscriptions/runtime-config`
 - `PUT /api/subscriptions/runtime-config`
