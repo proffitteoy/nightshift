@@ -621,6 +621,54 @@ class LLMClient:
             "source": "rules",
         }
 
+    def answer_repo_context_question(
+        self,
+        repo_context: Dict[str, object],
+        question: str,
+    ) -> Dict[str, str]:
+        normalized_question = str(question or "").strip()
+        if not normalized_question:
+            return {"answer": "请输入要追问的问题。", "source": "rules"}
+
+        prompt_name = "repo_context_qa_v1"
+        prompt = render_prompt(
+            prompt_name,
+            repository=str(repo_context.get("repository", "unknown")),
+            repo_url=str(repo_context.get("repo_url", "")),
+            repo_description=str(repo_context.get("description", "") or "当前未获取到仓库描述。"),
+            default_branch=str(repo_context.get("default_branch", "") or "unknown"),
+            repo_topics=self._format_repo_topics(repo_context),
+            root_entries=self._format_repo_root_entries(repo_context),
+            readme_excerpt=self._format_repo_readme_excerpt(repo_context),
+            changed_files=self._format_repo_changed_files(repo_context),
+            recent_repo_prs=self._format_repo_pull_requests(repo_context),
+            recent_repo_commits=self._format_repo_commits(repo_context),
+            question=normalized_question,
+        )
+        resolved_config = self._resolve_call_config(prompt_name)
+        cache_key = self._build_report_qa_cache_key(
+            prompt_name=prompt_name,
+            prompt=prompt,
+            config=resolved_config,
+        )
+        cached_answer = self._get_cached_report_qa_answer(cache_key)
+        if cached_answer:
+            return {"answer": cached_answer, "source": "llm"}
+
+        answer = self._call_openai_compatible(
+            prompt_name=prompt_name,
+            prompt=prompt,
+            resolved_config=resolved_config,
+        )
+        if answer:
+            self._store_cached_report_qa_answer(cache_key=cache_key, answer=answer)
+            return {"answer": answer, "source": "llm"}
+
+        return {
+            "answer": self._build_rule_based_repo_context_answer(repo_context, normalized_question),
+            "source": "rules",
+        }
+
     def summarize_trending_project(self, project: Dict[str, object]) -> str:
         prompt_name = "trending_detail_summary_v2"
         trend = project.get("trend_7d", [])
@@ -749,6 +797,31 @@ class LLMClient:
         if todos:
             return f"{summary_text} 你可以继续追问待办、提交差异、重点文件或回归建议；当前优先动作包括：{'；'.join(todos[:2])}。"
         return f"{summary_text} 你可以继续追问提交差异、重点文件或下一步动作。"
+
+    def _build_rule_based_repo_context_answer(self, repo_context: Dict[str, object], question: str) -> str:
+        lowered = question.lower()
+        repository = str(repo_context.get("repository", "unknown")).strip() or "unknown"
+        description = str(repo_context.get("description", "") or "").strip()
+        default_branch = str(repo_context.get("default_branch", "") or "").strip() or "unknown"
+        root_entries = self._format_repo_root_entries(repo_context)
+        changed_files = self._format_repo_changed_files(repo_context)
+        recent_prs = self._format_repo_pull_requests(repo_context)
+        recent_commits = self._format_repo_commits(repo_context)
+
+        asks_recent = any(term in lowered for term in ["最近", "更新", "commit", "commits", "pr", "change", "changes"])
+        asks_identity = any(term in lowered for term in ["是什么", "what", "用途", "项目", "readme"])
+
+        if asks_recent and asks_identity:
+            return (
+                f"{repository} 的默认分支是 {default_branch}。"
+                f"{description or '当前未获取到仓库描述。'}"
+                f"最近可见变更文件包括：{changed_files}；最近 PR 包括：{recent_prs}；最近 Commit 包括：{recent_commits}。"
+            )
+        if asks_recent:
+            return f"{repository} 最近可见变更文件包括：{changed_files}；最近 PR 包括：{recent_prs}；最近 Commit 包括：{recent_commits}。"
+        if asks_identity:
+            return f"{repository} 的默认分支是 {default_branch}。{description or '当前未获取到仓库描述。'} 根目录结构包括：{root_entries}。"
+        return f"{repository} 当前可用上下文包括 README 摘要、根目录结构、最近变更文件、PR 和 Commit；请进一步说明要分析的方向。"
 
     def _call_openai_compatible(
         self,

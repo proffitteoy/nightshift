@@ -18,7 +18,7 @@ MAX_COMPARE_FILES = 20
 MAX_PULL_REQUESTS = 5
 MAX_PULL_REQUEST_SCAN = 24
 MAX_README_EXCERPT_CHARS = 2400
-MAX_ROOT_ENTRIES = 12
+MAX_ROOT_ENTRIES = 20
 MAX_QA_CHANGED_FILES = 8
 
 
@@ -355,6 +355,7 @@ def fetch_repo_question_context(
     repo_url: str,
     *,
     commit_data_dir: Optional[Path] = None,
+    hours: int = 72,
 ) -> Dict[str, object]:
     """Fetch lightweight repository context for report QA."""
     repo_full_name = parse_repo_full_name(repo_url)
@@ -394,7 +395,7 @@ def fetch_repo_question_context(
     activity = _load_saved_repo_activity(repo_full_name, commit_data_dir=commit_data_dir)
     if not _has_saved_repo_activity(activity):
         try:
-            activity = fetch_repo_activity(token=token, repo_url=repo_url, hours=72)
+            activity = fetch_repo_activity(token=token, repo_url=repo_url, hours=hours)
         except Exception as exc:
             LOGGER.warning("repo QA activity context fallback to metadata only: repo=%s error=%s", repo_full_name, exc)
 

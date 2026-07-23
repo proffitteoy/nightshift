@@ -22,9 +22,9 @@
 - `routes/general.py`：根接口、代理接口、临时写入 Token/LLM 配置。
 - `routes/project.py`：页面2报告相关接口。
 - `routes/trending.py`：页面1热点与分析。
-- `routes/code_panorama.py`：页面3代码全景图。
+- `routes/code_panorama.py`：页面3代码全景图、工作流仓库分析与外部 Agent 仓库上下文接口。
 - `routes/subscriptions.py`：页面4订阅中心与持久化运行时配置。
 
 ## 并发控制映射
 - 路由层捕获 `ConcurrencyLockTimeoutError` 并返回 `503`。
-- 当前已使用的忙碌错误码：`REPORT_BUSY`、`SUBSCRIBE_BUSY`、`PANORAMA_BUSY`、`ANALYSIS_BUSY`。
+- 当前已使用的忙碌错误码：`REPORT_BUSY`、`SUBSCRIBE_BUSY`、`PANORAMA_BUSY`、`ANALYSIS_BUSY`、`REPO_CONTEXT_BUSY`。

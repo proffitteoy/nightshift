@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -179,6 +179,84 @@ class WorkflowAnalysisRequest(BaseModel):
             return value
         normalized = sanitize_untrusted_text(value, max_length=600, allow_empty=True)
         return normalized or None
+
+
+class RepoContextRequest(BaseModel):
+    model_config = INPUT_MODEL_CONFIG
+    repo_url: str
+    question: Optional[str] = Field(default=None, max_length=600)
+    intent: Optional[str] = Field(default=None, max_length=60)
+    hours: int = Field(default=72, ge=1, le=720)
+    context_mode: str = Field(default="standard", min_length=1, max_length=20)
+    max_context_chars: int = Field(default=12000, ge=1000, le=60000)
+    max_evidence_items: int = Field(default=12, ge=3, le=30)
+    include_raw: bool = False
+    force_refresh: bool = False
+    cache_ttl_seconds: int = Field(default=1800, ge=0, le=86400)
+
+    @field_validator("repo_url")
+    @classmethod
+    def validate_repo_url(cls, value: str) -> str:
+        return normalize_github_repo_url(value)
+
+    @field_validator("question")
+    @classmethod
+    def validate_context_question(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        normalized = sanitize_untrusted_text(value, max_length=600, allow_empty=True)
+        return normalized or None
+
+    @field_validator("intent")
+    @classmethod
+    def validate_context_intent(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        normalized = sanitize_untrusted_text(value, max_length=60, allow_empty=True)
+        return normalized or None
+
+    @field_validator("context_mode")
+    @classmethod
+    def validate_context_mode(cls, value: str) -> str:
+        normalized = sanitize_untrusted_text(value, max_length=20).lower()
+        if normalized not in {"compact", "standard", "deep"}:
+            return "standard"
+        return normalized
+
+
+class RepoContextQaRequest(RepoContextRequest):
+    question: str = Field(..., min_length=1, max_length=600)
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, value: str) -> str:
+        return sanitize_untrusted_text(value, max_length=600)
+
+
+class RepoContextResponse(BaseModel):
+    message: str
+    repository: str
+    repo_url: str
+    source: str
+    context: Dict[str, object]
+    context_quality: str
+    analysis_prompt_context: str
+    repo_summary_text: str
+    recent_changes_text: str
+    evidence_blocks: List[Dict[str, object]]
+    omitted_evidence_count: int
+    missing_context: List[str]
+    readme_text: str
+    root_entries_text: str
+    changed_files_text: str
+    recent_prs_text: str
+    recent_commits_text: str
+    merged_context: str
+
+
+class RepoContextQaResponse(RepoContextResponse):
+    answer: str
+    answer_source: str
 
 
 SubscriptionFrequency = Literal["daily", "weekly", "weekday"]

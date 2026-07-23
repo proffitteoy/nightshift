@@ -23,6 +23,8 @@
 ## code_panorama
 - `POST /api/repo/code-panorama`：生成函数节点与调用边（MVP 图谱）。
 - `POST /api/repo/workflow-analysis`：供讯飞工作流调用，按仓库 URL 提取文件树、识别技术栈、筛选关键文件并生成合并上下文，替代工作流内 MCP 逐文件分析链路。
+- `POST /api/repo/context`：供外部 Agent 平台调用，抓取 README、根目录、近期变更文件、PR 与 Commit，并按 `question/intent/max_context_chars` 返回受控的 `analysis_prompt_context`；星辰大模型节点只应引用该字段。
+- `POST /api/repo/context-qa`：基于 `/api/repo/context` 的仓库上下文回答用户问题；有 LLM 配置时走模型，无配置时走规则兜底。
 
 ## subscriptions
 - `GET /api/subscriptions`：查询订阅列表。
@@ -36,6 +38,7 @@
 - `SUBSCRIBE_BUSY` / `REPORT_BUSY`：页面2并发重计算锁等待超时。
 - `PANORAMA_BUSY`：页面3全景图生成锁等待超时。
 - `ANALYSIS_BUSY`：页面1热点分析生成锁等待超时。
+- `REPO_CONTEXT_BUSY`：仓库上下文抓取或问答锁等待超时。
 
 ## 前端联调提示
 - 页面1列表继续调用 `GET /api/trending/generate-analysis`；进入详情后再调用 `POST /api/trending/detail-summary`，详情文案应与列表摘要区分。

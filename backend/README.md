@@ -43,6 +43,8 @@
 - `POST /api/project/report-qa`
 - `POST /api/repo/code-panorama`
 - `POST /api/repo/workflow-analysis`
+- `POST /api/repo/context`
+- `POST /api/repo/context-qa`
 - `GET /api/subscriptions`
 - `GET /api/subscriptions/runtime-config`
 - `PUT /api/subscriptions/runtime-config`
@@ -68,6 +70,7 @@
 - 页面3：
   - 静态入口是 `/showcase/atlas/`。
   - GitHub clone 与资源代理通过 `/api/proxy`。
+  - 外部 Agent 可通过 `/api/repo/context` 抓取 README、根目录、近期变更文件、PR 与 Commit，并只把 `analysis_prompt_context` 传给星辰大模型，避免超上下文。
 - 页面4：
   - 订阅、运行时配置和发送入口全部由后端承载。
   - 邮件发送走阿里云 Direct Mail RPC，不依赖 `alibabacloud-gateway-spi`。
@@ -77,6 +80,7 @@
 - 业务数据库：`sqlite_data/nightshift.db`
 - `users`、`subscriptions`、`runtime_configs` 共用一份 SQLite，但按 `user_id` 作用域隔离。
 - 页面2产物按 `commit_data/user_{id}/` 与 `reports/user_{id}/` 隔离落盘。
+- 仓库上下文缓存按 `analysis_data/repo_context/user_{id}/` 隔离落盘，匿名请求写入 `analysis_data/repo_context/`。
 
 ## 6. 安全边界
 - 默认不信任请求参数、请求头、JWT、缓存命中、数据库历史字段和外部 API 返回值；读取后必须重新校验。
