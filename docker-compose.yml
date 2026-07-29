@@ -12,6 +12,6 @@ services:
       NIGHTSHIFT_RUNTIME_ROOT: /app/runtime
       NIGHTSHIFT_LOG_LEVEL: INFO
     ports:
-      - "8000:8000"
+      - "8091:8000"
     volumes:
       - ./runtime:/app/runtime
