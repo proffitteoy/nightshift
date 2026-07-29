@@ -10,6 +10,8 @@ import com.example.myapplication3.database.GitSelfDatabaseHelper;
 import com.example.myapplication3.network.ApiClient;
 import com.example.myapplication3.network.models.UserProfileResponse;
 
+import androidx.appcompat.app.AppCompatDelegate;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -24,6 +26,7 @@ public class MyApplication extends Application {
         super.onCreate();
 
         instance = this;
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         runStartupStep("database manager init", () -> updateManager = new DatabaseUpdateManager(this));
         runStartupStep("session init", () -> {
             SessionStore.initialize(this);

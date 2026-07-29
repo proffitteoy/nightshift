@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -86,7 +87,7 @@
                     android:lineSpacingExtra="2dp"
                     android:textColor="@color/ns_muted"
                     android:textSize="12sp"
-                    tools:text="当前选定仓库：https://github.com/owner/repo" />
+                    tools:text="褰撳墠閫夊畾浠撳簱锛歨ttps://github.com/owner/repo" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -308,7 +309,7 @@
                             android:id="@+id/section_risk_arrow"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="▾"
+                            android:text="▼"
                             android:textColor="@color/ns_muted"
                             android:textSize="16sp" />
                     </LinearLayout>
@@ -365,7 +366,7 @@
                             android:id="@+id/section_handover_arrow"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="▸"
+                            android:text="▼"
                             android:textColor="@color/ns_muted"
                             android:textSize="16sp" />
                     </LinearLayout>
@@ -423,7 +424,7 @@
                             android:id="@+id/section_qa_arrow"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="▾"
+                            android:text="▼"
                             android:textColor="@color/ns_muted"
                             android:textSize="16sp" />
                     </LinearLayout>
@@ -442,9 +443,7 @@
                             android:layout_height="wrap_content"
                             android:text="@string/report_qa_note"
                             android:textColor="@color/ns_muted"
-                            android:textSize="12sp" />
-
-                        <LinearLayout
+                            android:textSize="12sp" />                        <LinearLayout
                             android:id="@+id/qa_messages_container"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -459,6 +458,8 @@
                             android:background="@drawable/rounded_input_background"
                             android:gravity="top|start"
                             android:hint="@string/report_qa_hint"
+                            android:imeOptions="actionSend"
+                            android:inputType="textMultiLine|textCapSentences"
                             android:minHeight="96dp"
                             android:padding="12dp"
                             android:textColor="@color/ns_text"
@@ -470,16 +471,20 @@
                             android:gravity="end"
                             android:orientation="horizontal">
 
-                            <Button
+                            <com.google.android.material.button.MaterialButton
                                 android:id="@+id/button_send_qa"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="10dp"
-                                android:text="@string/report_qa_send" />
+                                android:minHeight="44dp"
+                                android:text="发送"
+                                app:icon="@android:drawable/ic_menu_send"
+                                app:iconGravity="textStart"
+                                app:iconPadding="8dp"
+                                app:iconSize="18dp" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/deep_analysis_panel"
@@ -522,7 +527,7 @@
                     android:lineSpacingExtra="2dp"
                     android:textColor="@color/ns_muted"
                     android:textSize="12sp"
-                    tools:text="当前深度分析仓库：https://github.com/owner/repo" />
+                    tools:text="褰撳墠娣卞害鍒嗘瀽浠撳簱锛歨ttps://github.com/owner/repo" />
 
                 <TextView
                     android:id="@+id/deep_analysis_note"
@@ -549,7 +554,9 @@
                     android:background="@drawable/rounded_input_background"
                     android:gravity="top|start"
                     android:hint="@string/workflow_question_hint"
+                    android:imeOptions="actionSend"
                     android:minHeight="96dp"
+                    android:inputType="textMultiLine|textCapSentences"
                     android:padding="12dp"
                     android:textColor="@color/ns_text"
                     android:textColorHint="@color/ns_muted" />
@@ -560,14 +567,21 @@
                     android:gravity="end"
                     android:orientation="horizontal">
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_send_deep_question"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
-                        android:text="@string/report_qa_send" />
+                        android:minHeight="44dp"
+                        android:text="发送"
+                        app:icon="@android:drawable/ic_menu_send"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="18dp" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+        </LinearLayout>
     </ScrollView>
 </LinearLayout>
+

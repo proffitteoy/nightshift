@@ -1,10 +1,13 @@
 package com.example.myapplication3.ui.chat
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -20,6 +23,7 @@ import com.example.myapplication3.network.models.DailyReportResponse
 import com.example.myapplication3.network.models.RepoSubscriptionRequest
 import com.example.myapplication3.network.models.ReportQaResponse
 import com.example.myapplication3.ui.CurrentRepoStore
+import com.example.myapplication3.ui.MarkdownRenderer
 import okhttp3.Call as OkHttpCall
 import okhttp3.Callback as OkHttpCallback
 import okhttp3.MediaType.Companion.toMediaType
@@ -47,6 +51,7 @@ class ChatFragment : Fragment() {
     private val deepAnalysisMessages = mutableListOf<QaMessage>()
     private var deepAnalysisPending = false
     private var deepAnalysisStreamCall: OkHttpCall? = null
+    private var deepAnalysisRepoUrl: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,6 +71,8 @@ class ChatFragment : Fragment() {
         binding.buttonSendQa.setOnClickListener { sendQaQuestion() }
         binding.buttonCloseDeepAnalysis.setOnClickListener { hideDeepAnalysisPanel() }
         binding.buttonSendDeepQuestion.setOnClickListener { sendDeepAnalysisQuestion() }
+        bindSendAction(binding.qaInput, binding.buttonSendQa)
+        bindSendAction(binding.deepQuestionInput, binding.buttonSendDeepQuestion)
 
         bindSection(binding.sectionRiskHeader, binding.sectionRiskContent, binding.sectionRiskArrow, true)
         bindSection(binding.sectionHandoverHeader, binding.sectionHandoverContent, binding.sectionHandoverArrow, false)
@@ -230,6 +237,11 @@ class ChatFragment : Fragment() {
             return
         }
 
+        if (reportQaPending) {
+            showToast(getString(R.string.workflow_chat_pending))
+            return
+        }
+
         val question = binding.qaInput.text?.toString()?.trim().orEmpty()
         if (question.isBlank()) {
             showToast(getString(R.string.report_error_empty_question))
@@ -365,10 +377,12 @@ class ChatFragment : Fragment() {
         }
 
         val content = TextView(requireContext()).apply {
-            text = message.text
+            text = renderMessageText(message)
             setTextColor(ContextCompat.getColor(requireContext(), R.color.ns_text))
             textSize = 13f
             setLineSpacing(0f, 1.2f)
+            linksClickable = true
+            movementMethod = android.text.method.LinkMovementMethod.getInstance()
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -380,6 +394,13 @@ class ChatFragment : Fragment() {
         container.addView(metaRow)
         container.addView(content)
         return container
+    }
+
+    private fun renderMessageText(message: QaMessage): CharSequence {
+        if (message.role != ROLE_ASSISTANT && message.source != WORKFLOW_SOURCE) {
+            return message.text
+        }
+        return MarkdownRenderer.toSpanned(message.text)
     }
 
     private fun buildLabeledBlock(label: String, items: List<String>): String {
@@ -434,12 +455,13 @@ class ChatFragment : Fragment() {
             return
         }
 
-        val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty()
+        val repoUrl = binding.reportRepoInput.text?.toString()?.trim().orEmpty()
         if (repoUrl.isBlank()) {
-            showToast(getString(R.string.report_error_missing_selected_repo))
+            showToast(getString(R.string.report_error_empty_question))
             return
         }
 
+        binding.reportRepoInput.setText(repoUrl)
         beginDeepAnalysisSession(repoUrl)
         val userInput = getString(R.string.workflow_initial_user_message, repoUrl)
         val workflowInput = buildDeepWorkflowInput(userInput, includeHistory = false)
@@ -450,6 +472,7 @@ class ChatFragment : Fragment() {
         deepAnalysisPending = false
         deepAnalysisStreamCall?.cancel()
         deepAnalysisStreamCall = null
+        deepAnalysisRepoUrl = repoUrl
         deepAnalysisMessages.clear()
         deepAnalysisMessages.add(
             QaMessage(
@@ -461,7 +484,7 @@ class ChatFragment : Fragment() {
         binding.deepAnalysisRepoText.text = getString(R.string.report_selected_repo, repoUrl)
         binding.deepQuestionInput.setText("")
         binding.deepAnalysisPanel.visibility = View.VISIBLE
-        renderDeepAnalysisMessages()
+        renderDeepAnalysisMessages(autoScroll = true)
     }
 
     private fun hideDeepAnalysisPanel(clearConversation: Boolean = false) {
@@ -471,6 +494,7 @@ class ChatFragment : Fragment() {
             deepAnalysisPending = false
             deepAnalysisStreamCall?.cancel()
             deepAnalysisStreamCall = null
+            deepAnalysisRepoUrl = ""
             binding.deepQuestionInput.setText("")
         }
     }
@@ -486,9 +510,9 @@ class ChatFragment : Fragment() {
             return
         }
         if (deepAnalysisMessages.isEmpty()) {
-            val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty()
+            val repoUrl = binding.reportRepoInput.text?.toString()?.trim().orEmpty()
             if (repoUrl.isBlank()) {
-                showToast(getString(R.string.report_error_missing_selected_repo))
+                showToast(getString(R.string.report_error_empty_question))
                 return
             }
             beginDeepAnalysisSession(repoUrl)
@@ -500,31 +524,52 @@ class ChatFragment : Fragment() {
     }
 
     private fun buildDeepWorkflowInput(latestQuestion: String, includeHistory: Boolean): String {
-        val repoUrl = CurrentRepoStore.getSelectedRepoUrl(requireContext()).orEmpty().ifBlank {
-            currentReportRepoUrl
+        val repoUrl = deepAnalysisRepoUrl.ifBlank {
+            binding.reportRepoInput.text?.toString()?.trim().orEmpty()
         }
         if (!includeHistory) {
             return latestQuestion
         }
 
-        val history = deepAnalysisMessages
-            .filter { !it.pending }
-            .takeLast(MAX_HISTORY_MESSAGES)
-            .joinToString("\n") { message ->
-                val role = if (message.role == ROLE_USER) "用户" else "AI"
-                "$role：${message.text}"
-            }
+        val previousSummary = buildPreviousDeepAnalysisSummary()
 
         return buildString {
             append("请继续以大模型对话方式回答晨报交接深度分析追问。")
             if (repoUrl.isNotBlank()) {
                 append("\n当前仓库：").append(repoUrl)
             }
-            if (history.isNotBlank()) {
-                append("\n\n已有对话：\n").append(history)
+            if (previousSummary.isNotBlank()) {
+                append("\n\n上一轮分析简短摘要：\n").append(previousSummary)
             }
             append("\n\n用户新问题：").append(latestQuestion)
         }
+    }
+
+    private fun buildPreviousDeepAnalysisSummary(): String {
+        val previousAnswer = deepAnalysisMessages
+            .asReversed()
+            .firstOrNull {
+                it.role == ROLE_ASSISTANT &&
+                    it.source == WORKFLOW_SOURCE &&
+                    !it.pending &&
+                    it.text != getString(R.string.workflow_chat_seed)
+            }
+            ?.text
+            .orEmpty()
+
+        if (previousAnswer.isBlank()) {
+            return ""
+        }
+
+        return previousAnswer
+            .replace(Regex("```[\\s\\S]*?```"), " ")
+            .replace(Regex("(?m)^#{1,6}\\s*"), "")
+            .replace(Regex("[*_`>#\\[\\]()]+"), "")
+            .replace(Regex("(?m)^\\s*[-+•]\\s+"), "")
+            .replace(Regex("(?m)^\\s*\\d+[.)]\\s+"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(MAX_PREVIOUS_SUMMARY_CHARS)
     }
 
     private fun runDeepAnalysis(visibleUserMessage: String, workflowInput: String) {
@@ -539,7 +584,7 @@ class ChatFragment : Fragment() {
                 pending = true,
             ),
         )
-        renderDeepAnalysisMessages()
+        renderDeepAnalysisMessages(autoScroll = true)
 
         val payload = JSONObject()
             .put("user_input", workflowInput)
@@ -623,14 +668,22 @@ class ChatFragment : Fragment() {
         })
     }
 
-    private fun renderDeepAnalysisMessages() {
+    private fun renderDeepAnalysisMessages(autoScroll: Boolean) {
+        val scrollY = binding.scrollView.scrollY
         binding.deepAnalysisMessagesContainer.removeAllViews()
         deepAnalysisMessages.forEach { binding.deepAnalysisMessagesContainer.addView(createMessageView(it)) }
         binding.buttonSendDeepQuestion.isEnabled = !deepAnalysisPending
-        scrollToBottom()
+        binding.scrollView.post {
+            if (autoScroll) {
+                scrollToBottom()
+            } else {
+                binding.scrollView.scrollTo(0, scrollY)
+            }
+        }
     }
 
     private fun updateDeepAnalysisMessage(text: String, pending: Boolean) {
+        val shouldAutoScroll = shouldAutoScrollDeepAnalysis()
         val index = deepAnalysisMessages.indexOfLast { it.role == ROLE_ASSISTANT && it.source == WORKFLOW_SOURCE }
         if (index >= 0) {
             deepAnalysisMessages[index] = deepAnalysisMessages[index].copy(text = text, pending = pending)
@@ -644,7 +697,7 @@ class ChatFragment : Fragment() {
                 ),
             )
         }
-        renderDeepAnalysisMessages()
+        renderDeepAnalysisMessages(autoScroll = shouldAutoScroll)
     }
 
     private fun finishDeepAnalysis(text: String) {
@@ -672,11 +725,31 @@ class ChatFragment : Fragment() {
         binding.scrollView.post { binding.scrollView.fullScroll(View.FOCUS_DOWN) }
     }
 
+    private fun shouldAutoScrollDeepAnalysis(): Boolean {
+        val scrollView = binding.scrollView
+        val child = scrollView.getChildAt(0) ?: return true
+        val bottom = (child.height - scrollView.height).coerceAtLeast(0)
+        return scrollView.scrollY >= bottom - dp(24)
+    }
+
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
+
+    private fun bindSendAction(input: EditText, button: View) {
+        input.setOnEditorActionListener { _, actionId, event ->
+            val isSendAction = actionId == EditorInfo.IME_ACTION_SEND
+            val isEnterKey = event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP
+            if (isSendAction || isEnterKey) {
+                button.performClick()
+                true
+            } else {
+                false
+            }
+        }
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -698,6 +771,6 @@ class ChatFragment : Fragment() {
         private const val ROLE_ASSISTANT = "assistant"
         private const val SOURCE_RULES = "rules"
         private const val WORKFLOW_SOURCE = "workflow"
-        private const val MAX_HISTORY_MESSAGES = 8
+        private const val MAX_PREVIOUS_SUMMARY_CHARS = 1200
     }
 }

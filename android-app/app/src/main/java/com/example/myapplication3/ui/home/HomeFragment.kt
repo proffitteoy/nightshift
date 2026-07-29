@@ -10,6 +10,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.text.method.LinkMovementMethod
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
@@ -19,11 +21,18 @@ import com.example.myapplication3.databinding.FragmentHomeBinding
 import com.example.myapplication3.network.ApiClient
 import com.example.myapplication3.network.ApiErrorParser
 import com.example.myapplication3.network.models.TrendingAnalysisResponse
-import com.example.myapplication3.network.models.TrendingDetailSummaryRequest
-import com.example.myapplication3.network.models.TrendingDetailSummaryResponse
+import com.example.myapplication3.ui.MarkdownRenderer
+import okhttp3.Call as OkHttpCall
+import okhttp3.Callback as OkHttpCallback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response as OkHttpResponse
+import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.IOException
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -34,8 +43,11 @@ class HomeFragment : Fragment() {
 
     private var items: List<TrendingAnalysisResponse.ProjectAnalysis> = emptyList()
     private var selectedRepo: String? = null
-    private val detailSummaryCache = mutableMapOf<String, String>()
-    private val detailSummaryLoadingRepos = mutableSetOf<String>()
+    private var currentDetailRepoFullName: String? = null
+    private var currentSummaryText: TextView? = null
+    private var currentProgressText: TextView? = null
+    private var currentAnalyzeButton: Button? = null
+    private var detailBackCallback: OnBackPressedCallback? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -53,6 +65,13 @@ class HomeFragment : Fragment() {
         binding.menuButton.setOnClickListener { openDrawer() }
         binding.loadTrendingButton.setOnClickListener { loadTrendingProjects() }
         binding.swipeRefreshLayout.setOnRefreshListener { loadTrendingProjects() }
+        detailBackCallback = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                selectedRepo = null
+                renderContent()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, detailBackCallback!!)
 
         loadTrendingProjects()
     }
@@ -71,8 +90,6 @@ class HomeFragment : Fragment() {
             showToast(getString(R.string.common_network_error, t.message ?: "unknown"))
             items = emptyList()
             selectedRepo = null
-            detailSummaryCache.clear()
-            detailSummaryLoadingRepos.clear()
             renderContent()
             return
         }
@@ -85,8 +102,6 @@ class HomeFragment : Fragment() {
                 showLoading(false)
                 if (response.isSuccessful && response.body() != null) {
                     items = response.body()?.data.orEmpty()
-                    detailSummaryCache.clear()
-                    detailSummaryLoadingRepos.clear()
                     if (selectedRepo != null && items.none { it.repoFullName == selectedRepo }) {
                         selectedRepo = null
                     }
@@ -95,8 +110,6 @@ class HomeFragment : Fragment() {
                     showToast(ApiErrorParser.parse(response, getString(R.string.home_empty)))
                     items = emptyList()
                     selectedRepo = null
-                    detailSummaryCache.clear()
-                    detailSummaryLoadingRepos.clear()
                     renderContent()
                 }
             }
@@ -106,8 +119,6 @@ class HomeFragment : Fragment() {
                 showToast(getString(R.string.common_network_error, t.message ?: "unknown"))
                 items = emptyList()
                 selectedRepo = null
-                detailSummaryCache.clear()
-                detailSummaryLoadingRepos.clear()
                 renderContent()
             }
         })
@@ -122,14 +133,18 @@ class HomeFragment : Fragment() {
         }
 
         val current = items.firstOrNull { it.repoFullName == selectedRepo }
+        detailBackCallback?.isEnabled = current != null
         if (current != null) {
+            binding.swipeRefreshLayout.isEnabled = false
             renderDetail(current)
         } else {
+            binding.swipeRefreshLayout.isEnabled = true
             renderList()
         }
     }
 
     private fun renderList() {
+        clearCurrentDetailViews()
         items.forEachIndexed { index, project ->
             binding.contentContainer.addView(createProjectCard(project, index))
         }
@@ -137,14 +152,6 @@ class HomeFragment : Fragment() {
 
     private fun renderDetail(project: TrendingAnalysisResponse.ProjectAnalysis) {
         val repoFullName = project.repoFullName?.trim().orEmpty()
-
-        val backButton = Button(requireContext()).apply {
-            text = getString(R.string.home_back)
-            setOnClickListener {
-                selectedRepo = null
-                renderContent()
-            }
-        }
 
         val card = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
@@ -170,84 +177,281 @@ class HomeFragment : Fragment() {
         }
 
         val summaryText = TextView(requireContext()).apply {
-            text = detailSummaryCache[repoFullName] ?: buildProjectDetailFallback(project)
+            val state = getDetailAnalysisState(repoFullName)
+            text = MarkdownRenderer.toSpanned(state.text.ifBlank { buildProjectDetailFallback(project) })
             setTextColor(ContextCompat.getColor(requireContext(), R.color.ns_text))
             textSize = 14f
             setLineSpacing(0f, 1.3f)
+            linksClickable = true
+            isFocusable = false
+            isFocusableInTouchMode = false
+            movementMethod = LinkMovementMethod.getInstance()
             layoutParams = createLayoutParams(top = 6)
         }
 
+        val progressText = TextView(requireContext()).apply {
+            val state = getDetailAnalysisState(repoFullName)
+            text = state.progressText
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.ns_muted))
+            textSize = 12f
+            visibility = if (state.progressText.isBlank()) View.GONE else View.VISIBLE
+            layoutParams = createLayoutParams(top = 6)
+        }
+
+        val analyzeButton = Button(requireContext()).apply {
+            text = getString(R.string.home_detail_action_analyze)
+            isEnabled = !getDetailAnalysisState(repoFullName).running
+            setOnClickListener { startDetailWorkflowAnalysis(project, summaryText, progressText, this) }
+            layoutParams = createLayoutParams(top = 10)
+        }
+
+        currentDetailRepoFullName = repoFullName
+        currentSummaryText = summaryText
+        currentProgressText = progressText
+        currentAnalyzeButton = analyzeButton
+
         card.addView(repoTitle)
         card.addView(summaryTitle)
+        card.addView(analyzeButton)
+        card.addView(progressText)
         card.addView(summaryText)
 
-        binding.contentContainer.addView(backButton)
         binding.contentContainer.addView(card)
-
-        loadDetailSummary(project, summaryText)
     }
 
-    private fun loadDetailSummary(project: TrendingAnalysisResponse.ProjectAnalysis, summaryText: TextView) {
+    private fun startDetailWorkflowAnalysis(
+        project: TrendingAnalysisResponse.ProjectAnalysis,
+        summaryText: TextView,
+        progressText: TextView,
+        analyzeButton: Button,
+    ) {
         val repoFullName = project.repoFullName?.trim().orEmpty()
         val fallback = buildProjectDetailFallback(project)
         if (repoFullName.isBlank()) {
-            summaryText.text = fallback
+            summaryText.text = MarkdownRenderer.toSpanned(fallback)
             return
         }
 
-        detailSummaryCache[repoFullName]?.let {
-            summaryText.text = it
+        val repoUrl = resolveTrendingRepoUrl(project)
+        if (repoUrl.isBlank()) {
+            summaryText.text = MarkdownRenderer.toSpanned(fallback)
             return
         }
 
-        if (detailSummaryLoadingRepos.contains(repoFullName)) {
-            return
-        }
+        val state = getDetailAnalysisState(repoFullName)
+        state.call?.cancel()
+        state.text = getString(R.string.home_detail_summary_loading)
+        state.progressText = getString(R.string.home_detail_analysis_progress_waiting)
+        state.running = true
+        state.currentStage = ""
+        updateDetailText(repoFullName, summaryText, state.text)
+        updateDetailProgress(repoFullName, progressText, state.progressText)
+        analyzeButton.isEnabled = false
 
-        detailSummaryLoadingRepos.add(repoFullName)
+        val workflowInput = "综合分析 $repoUrl"
+        val payload = JSONObject().put("user_input", workflowInput).toString()
+            .toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(ApiClient.BASE_URL + "api/project/deep-analysis/stream")
+            .post(payload)
+            .build()
 
-        val request = TrendingDetailSummaryRequest(
-            repoFullName,
-            project.description.orEmpty(),
-            project.projectSummary.orEmpty(),
-            project.language.orEmpty(),
-            project.starsTotal,
-            project.trend7d.orEmpty(),
-            project.link.orEmpty(),
-        )
+        state.call = ApiClient.getHttpClient().newCall(request)
+        state.call?.enqueue(object : OkHttpCallback {
+            override fun onResponse(call: OkHttpCall, response: OkHttpResponse) {
+                response.use {
+                    if (!response.isSuccessful) {
+                        val error = response.body?.string().orEmpty().ifBlank { "HTTP ${response.code}" }
+                        state.text = fallback
+                        state.progressText = getString(R.string.home_detail_analysis_failed)
+                        state.running = false
+                        state.call = null
+                        updateDetailText(repoFullName, summaryText, state.text)
+                        updateDetailProgress(repoFullName, progressText, state.progressText)
+                        updateAnalyzeButton(repoFullName, analyzeButton, true)
+                        showToastOnUiThread(getString(R.string.common_network_error, error))
+                        return
+                    }
 
-        ApiClient.getApiService().getTrendingDetailSummary(request)
-            .enqueue(object : Callback<TrendingDetailSummaryResponse> {
-                override fun onResponse(
-                    call: Call<TrendingDetailSummaryResponse>,
-                response: Response<TrendingDetailSummaryResponse>,
-            ) {
-                detailSummaryLoadingRepos.remove(repoFullName)
-                val body = response.body()
-                val detailText = if (response.isSuccessful && body != null) {
-                    body.summary?.trim().orEmpty().ifBlank { fallback }
-                } else {
-                    fallback
-                }
-                val source = body?.source?.trim().orEmpty()
-                if (response.isSuccessful && source.equals("llm", ignoreCase = true) && detailText.isNotBlank()) {
-                    detailSummaryCache[repoFullName] = detailText
-                } else {
-                    detailSummaryCache.remove(repoFullName)
-                }
-                if (selectedRepo == repoFullName) {
-                    summaryText.text = detailText
+                    val source = response.body?.source()
+                    if (source == null) {
+                        state.text = fallback
+                        state.progressText = getString(R.string.home_detail_analysis_failed)
+                        state.running = false
+                        state.call = null
+                        updateDetailText(repoFullName, summaryText, state.text)
+                        updateDetailProgress(repoFullName, progressText, state.progressText)
+                        updateAnalyzeButton(repoFullName, analyzeButton, true)
+                        return
+                    }
+
+                    val builder = StringBuilder()
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: continue
+                        if (!line.startsWith("data:")) continue
+
+                        val rawJson = line.removePrefix("data:").trim()
+                        if (rawJson.isBlank()) continue
+
+                        val event = JSONObject(rawJson)
+                        when (event.optString("type")) {
+                            "done" -> {
+                                val finalText = builder.toString().ifBlank { fallback }
+                                state.text = finalText
+                                state.progressText = getString(R.string.home_detail_analysis_progress, 100)
+                                state.running = false
+                                state.call = null
+                                updateDetailText(repoFullName, summaryText, state.text)
+                                updateDetailProgress(repoFullName, progressText, state.progressText)
+                                updateAnalyzeButton(repoFullName, analyzeButton, true)
+                                return
+                            }
+                            "error" -> {
+                                val message = event.optString("message", getString(R.string.report_error_latest, "workflow stream failed"))
+                                state.text = fallback
+                                state.progressText = getString(R.string.home_detail_analysis_failed)
+                                state.running = false
+                                state.call = null
+                                updateDetailText(repoFullName, summaryText, state.text)
+                                updateDetailProgress(repoFullName, progressText, state.progressText)
+                                updateAnalyzeButton(repoFullName, analyzeButton, true)
+                                showToastOnUiThread(message)
+                                return
+                            }
+                        }
+
+                        parseWorkflowProgress(event)?.let { progress ->
+                            state.progressText = getString(R.string.home_detail_analysis_progress, progress)
+                            updateDetailProgress(repoFullName, progressText, state.progressText)
+                        }
+
+                        val stage = event.optString("stage")
+                        val content = event.optString("content")
+                        if (stage.isNotBlank() && stage != state.currentStage) {
+                            state.currentStage = stage
+                            builder.append("\n\n【").append(stage).append("】\n")
+                        }
+                        if (content.isNotBlank()) builder.append(content)
+
+                        val displayText = builder.toString().ifBlank { getString(R.string.home_detail_summary_loading) }
+                        state.text = displayText
+                        updateDetailText(repoFullName, summaryText, state.text)
+                    }
+
+                    val finalText = builder.toString().ifBlank { fallback }
+                    state.text = finalText
+                    state.progressText = getString(R.string.home_detail_analysis_progress, 100)
+                    state.running = false
+                    state.call = null
+                    updateDetailText(repoFullName, summaryText, state.text)
+                    updateDetailProgress(repoFullName, progressText, state.progressText)
+                    updateAnalyzeButton(repoFullName, analyzeButton, true)
                 }
             }
 
-            override fun onFailure(call: Call<TrendingDetailSummaryResponse>, t: Throwable) {
-                detailSummaryLoadingRepos.remove(repoFullName)
-                detailSummaryCache.remove(repoFullName)
-                if (selectedRepo == repoFullName) {
-                    summaryText.text = fallback
-                }
+            override fun onFailure(call: OkHttpCall, e: IOException) {
+                if (call.isCanceled()) return
+                state.text = fallback
+                state.progressText = getString(R.string.home_detail_analysis_failed)
+                state.running = false
+                state.call = null
+                updateDetailText(repoFullName, summaryText, state.text)
+                updateDetailProgress(repoFullName, progressText, state.progressText)
+                updateAnalyzeButton(repoFullName, analyzeButton, true)
+                showToastOnUiThread(getString(R.string.common_network_error, e.message ?: "unknown"))
             }
         })
+    }
+
+    private fun updateDetailText(repoFullName: String, summaryText: TextView, text: String) {
+        activity?.runOnUiThread {
+            if (selectedRepo == repoFullName) {
+                val currentBinding = _binding ?: return@runOnUiThread
+                val scrollY = currentBinding.homeScrollView.scrollY
+                val target = if (currentDetailRepoFullName == repoFullName) {
+                    currentSummaryText ?: summaryText
+                } else {
+                    summaryText
+                }
+                target.text = MarkdownRenderer.toSpanned(text)
+                currentBinding.homeScrollView.post {
+                    currentBinding.homeScrollView.scrollTo(0, scrollY)
+                }
+            }
+        }
+    }
+
+    private fun updateDetailProgress(repoFullName: String, progressText: TextView, text: String) {
+        activity?.runOnUiThread {
+            if (selectedRepo == repoFullName) {
+                val currentBinding = _binding ?: return@runOnUiThread
+                val scrollY = currentBinding.homeScrollView.scrollY
+                val target = if (currentDetailRepoFullName == repoFullName) {
+                    currentProgressText ?: progressText
+                } else {
+                    progressText
+                }
+                target.visibility = View.VISIBLE
+                target.text = text
+                currentBinding.homeScrollView.post {
+                    currentBinding.homeScrollView.scrollTo(0, scrollY)
+                }
+            }
+        }
+    }
+
+    private fun updateAnalyzeButton(repoFullName: String, analyzeButton: Button, enabled: Boolean) {
+        activity?.runOnUiThread {
+            if (selectedRepo == repoFullName) {
+                val target = if (currentDetailRepoFullName == repoFullName) {
+                    currentAnalyzeButton ?: analyzeButton
+                } else {
+                    analyzeButton
+                }
+                target.isEnabled = enabled
+            }
+        }
+    }
+
+    private fun clearCurrentDetailViews() {
+        currentDetailRepoFullName = null
+        currentSummaryText = null
+        currentProgressText = null
+        currentAnalyzeButton = null
+    }
+
+    private fun parseWorkflowProgress(event: JSONObject): Int? {
+        if (!event.has("progress") || event.isNull("progress")) {
+            return null
+        }
+
+        val raw = event.opt("progress")
+        val number = when (raw) {
+            is Number -> raw.toDouble()
+            is String -> raw.trim().removeSuffix("%").toDoubleOrNull()
+            else -> null
+        } ?: return null
+
+        val percent = if (number <= 1.0) number * 100.0 else number
+        return percent.roundToInt().coerceIn(0, 100)
+    }
+
+    private fun showToastOnUiThread(message: String) {
+        activity?.runOnUiThread {
+            showToast(message)
+        }
+    }
+
+    private fun resolveTrendingRepoUrl(project: TrendingAnalysisResponse.ProjectAnalysis): String {
+        val link = project.link?.trim().orEmpty()
+        if (link.isNotBlank()) return link
+
+        val repoFullName = project.repoFullName?.trim().orEmpty()
+        return if (repoFullName.count { it == '/' } == 1) {
+            "https://github.com/$repoFullName"
+        } else {
+            ""
+        }
     }
 
     private fun createProjectCard(project: TrendingAnalysisResponse.ProjectAnalysis, index: Int): View {
@@ -411,6 +615,23 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        clearCurrentDetailViews()
         _binding = null
+    }
+
+    private data class DetailAnalysisState(
+        var text: String = "",
+        var progressText: String = "",
+        var running: Boolean = false,
+        var call: OkHttpCall? = null,
+        var currentStage: String = "",
+    )
+
+    companion object {
+        private val detailAnalysisStates = mutableMapOf<String, DetailAnalysisState>()
+
+        private fun getDetailAnalysisState(repoFullName: String): DetailAnalysisState {
+            return detailAnalysisStates.getOrPut(repoFullName) { DetailAnalysisState() }
+        }
     }
 }
