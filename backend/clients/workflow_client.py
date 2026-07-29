@@ -17,6 +17,7 @@ LOGGER = logging.getLogger(__name__)
 
 WORKFLOW_API_URL = "https://xingchen-api.xf-yun.com/workflow/v1/chat/completions"
 WORKFLOW_TIMEOUT_SECONDS = 120.0
+WORKFLOW_INPUT_FIELD = "AGENT-USER-INPUT"
 
 # 缓存配置：同一 user_input 的分析结果缓存 1 小时
 CACHE_TTL_SECONDS = 3600
@@ -102,7 +103,7 @@ def call_workflow(user_input: str, *, stream: bool = False, use_cache: bool = Tr
         "flow_id": flow_id,
         "stream": stream,
         "parameters": {
-            "input": user_input,
+            WORKFLOW_INPUT_FIELD: user_input,
         },
     }
 
@@ -185,7 +186,7 @@ def stream_workflow(user_input: str) -> Iterator[dict]:
         "flow_id": flow_id,
         "stream": True,
         "parameters": {
-            "input": user_input,
+            WORKFLOW_INPUT_FIELD: user_input,
         },
     }
 
