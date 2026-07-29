@@ -52,6 +52,14 @@ PROMPT_REGISTRY: Dict[str, PromptVersion] = {
         rollback_version="report_qa_v1",
         template_file="templates/report_qa_v2.txt",
     ),
+    "repo_context_qa_v1": PromptVersion(
+        name="repo_context_qa_v1",
+        author="nightshift-backend",
+        date="2026-07-23",
+        reason="为外部 Agent 平台提供基于 README、目录、变更、PR 与 Commit 的仓库问答",
+        rollback_version="none",
+        template_file="templates/repo_context_qa_v1.txt",
+    ),
     "report_qa_v1": PromptVersion(
         name="report_qa_v1",
         author="nightshift-backend",

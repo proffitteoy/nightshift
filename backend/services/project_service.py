@@ -10,11 +10,11 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from backend.clients.email_client import DEFAULT_DM_ENDPOINT, DEFAULT_DM_REGION_ID
-from backend.clients.github_client import fetch_repo_activity, parse_repo_full_name
+from backend.clients.github_client import fetch_repo_activity, fetch_repo_question_context, parse_repo_full_name
 from backend.clients.llm_client import LLMClient
 from backend.models.schemas import DailyReport
 from backend.repositories.json_repository import read_json, save_json
-from backend.repositories.paths import COMMIT_DATA_DIR, REPORTS_DIR
+from backend.repositories.paths import ANALYSIS_DATA_DIR, COMMIT_DATA_DIR, REPORTS_DIR
 from backend.repositories.subscription_repository import SubscriptionRepository
 from backend.security import SecurityValidationError, normalize_github_repo_url, normalize_repo_full_name
 from backend.services.concurrency_guard import ConcurrencyGuard
@@ -61,6 +61,8 @@ PERSISTED_EMAIL_DEFAULTS = {
     "email_read_timeout_ms": 10000,
 }
 DEFAULT_EMAIL_REPORT_CACHE_TTL_MINUTES = 180
+DEFAULT_REPO_CONTEXT_MAX_CHARS = 12000
+REPO_CONTEXT_BLOCK_CHAR_LIMIT = 900
 
 
 class ProjectService:
@@ -197,6 +199,112 @@ class ProjectService:
             token=self.get_runtime_token(user_id=user_id),
         )
 
+    def generate_repo_context(
+        self,
+        token: Optional[str],
+        repo_url: str,
+        question: Optional[str] = None,
+        intent: Optional[str] = None,
+        hours: int = 72,
+        context_mode: str = "standard",
+        max_context_chars: int = DEFAULT_REPO_CONTEXT_MAX_CHARS,
+        max_evidence_items: int = 12,
+        include_raw: bool = False,
+        cache_ttl_seconds: int = 1800,
+        force_refresh: bool = False,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, object]:
+        normalized_repo_url = self._normalize_repo_url(repo_url)
+        lock_key = self._build_repo_context_lock_key(
+            repo_url=normalized_repo_url,
+            user_id=user_id,
+            hours=hours,
+        )
+        with self.concurrency_guard.acquire(lock_key=lock_key):
+            cached = None if force_refresh else self._load_repo_context_artifact(
+                repo_url=normalized_repo_url,
+                user_id=user_id,
+                hours=hours,
+                cache_ttl_seconds=cache_ttl_seconds,
+            )
+            if cached is not None:
+                return self._normalize_repo_context_payload(
+                    cached,
+                    repo_url=normalized_repo_url,
+                    source="cache",
+                    hours=hours,
+                    question=question,
+                    intent=intent,
+                    context_mode=context_mode,
+                    max_context_chars=max_context_chars,
+                    max_evidence_items=max_evidence_items,
+                    include_raw=include_raw,
+                )
+
+            context = fetch_repo_question_context(
+                token=token,
+                repo_url=normalized_repo_url,
+                commit_data_dir=self._resolve_commit_data_dir(user_id),
+                hours=hours,
+            )
+            payload = self._normalize_repo_context_payload(
+                context,
+                repo_url=normalized_repo_url,
+                source="github",
+                hours=hours,
+                question=question,
+                intent=intent,
+                context_mode=context_mode,
+                max_context_chars=max_context_chars,
+                max_evidence_items=max_evidence_items,
+                include_raw=include_raw,
+            )
+            self._save_repo_context_artifact(
+                context,
+                repo_url=normalized_repo_url,
+                user_id=user_id,
+                hours=hours,
+            )
+            return payload
+
+    def answer_repo_context_question(
+        self,
+        token: Optional[str],
+        repo_url: str,
+        question: str,
+        hours: int = 72,
+        context_mode: str = "standard",
+        max_context_chars: int = DEFAULT_REPO_CONTEXT_MAX_CHARS,
+        max_evidence_items: int = 12,
+        include_raw: bool = False,
+        cache_ttl_seconds: int = 1800,
+        force_refresh: bool = False,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, object]:
+        context = self.generate_repo_context(
+            token=token,
+            repo_url=repo_url,
+            question=question,
+            hours=hours,
+            context_mode=context_mode,
+            max_context_chars=max_context_chars,
+            max_evidence_items=max_evidence_items,
+            include_raw=include_raw,
+            cache_ttl_seconds=cache_ttl_seconds,
+            force_refresh=force_refresh,
+            user_id=user_id,
+        )
+        answer_result = self._get_llm_client(user_id=user_id).answer_repo_context_question(
+            context,
+            question,
+        )
+        return {
+            **context,
+            "answer": answer_result["answer"],
+            "answer_source": answer_result["source"],
+            "message": "repo context question answered",
+        }
+
     def generate_email_digest(self, report: Dict[str, object], user_id: Optional[int] = None) -> str:
         normalized_report = DailyReport.model_validate(report).model_dump(by_alias=True)
         return self._get_llm_client(user_id=user_id).generate_email_digest(normalized_report)
@@ -224,6 +332,12 @@ class ProjectService:
             return COMMIT_DATA_DIR
         return COMMIT_DATA_DIR / f"user_{int(user_id)}"
 
+    def _resolve_repo_context_dir(self, user_id: Optional[int]) -> Path:
+        base_dir = ANALYSIS_DATA_DIR / "repo_context"
+        if user_id is None:
+            return base_dir
+        return base_dir / f"user_{int(user_id)}"
+
     def _resolve_reports_dir(self, user_id: Optional[int]) -> Path:
         if user_id is None:
             return REPORTS_DIR
@@ -249,6 +363,459 @@ class ProjectService:
         repository = str(report.get("repository", "unknown"))
         target_file = self._build_report_file(repository, user_id=user_id)
         return save_json(report, target_file)
+
+    def _build_repo_context_file(self, repo_url: str, user_id: Optional[int], hours: int) -> Path:
+        repo_name = self._repo_name_from_url(repo_url)
+        safe_repo = self._build_safe_repo_segment(repo_name)
+        scope_user = f"user_{int(user_id)}" if user_id is not None else "user_0"
+        digest = sha1(f"{repo_url.strip()}|{hours}|{scope_user}".encode("utf-8")).hexdigest()[:12]
+        return self._resolve_repo_context_dir(user_id) / f"{safe_repo}_{hours}h_{digest}.json"
+
+    def _build_repo_context_lock_key(self, repo_url: str, user_id: Optional[int], hours: int) -> str:
+        repo_name = self._repo_name_from_url(repo_url).strip().lower()
+        safe_repo = re.sub(r"[^a-z0-9_.-]+", "_", repo_name).strip("_") or "unknown_unknown"
+        scope_user = f"user_{int(user_id)}" if user_id is not None else "user_0"
+        digest = sha1(f"{repo_url.strip()}|{hours}|{scope_user}".encode("utf-8")).hexdigest()[:12]
+        return f"repo-context:{scope_user}:{safe_repo}:{hours}:{digest}"
+
+    def _load_repo_context_artifact(
+        self,
+        *,
+        repo_url: str,
+        user_id: Optional[int],
+        hours: int,
+        cache_ttl_seconds: int,
+    ) -> Optional[Dict[str, object]]:
+        if cache_ttl_seconds <= 0:
+            return None
+        target_file = self._build_repo_context_file(repo_url, user_id=user_id, hours=hours)
+        if not target_file.exists():
+            return None
+        modified_at = datetime.fromtimestamp(target_file.stat().st_mtime, tz=timezone.utc)
+        age_seconds = (datetime.now(timezone.utc) - modified_at).total_seconds()
+        if age_seconds > cache_ttl_seconds:
+            return None
+        try:
+            payload = read_json(target_file)
+        except Exception:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        return payload
+
+    def _save_repo_context_artifact(
+        self,
+        payload: Dict[str, object],
+        *,
+        repo_url: str,
+        user_id: Optional[int],
+        hours: int,
+    ) -> Path:
+        target_file = self._build_repo_context_file(repo_url, user_id=user_id, hours=hours)
+        return save_json(payload, target_file)
+
+    def _normalize_repo_context_payload(
+        self,
+        context: Dict[str, object],
+        *,
+        repo_url: str,
+        source: str,
+        hours: int,
+        question: Optional[str],
+        intent: Optional[str],
+        context_mode: str,
+        max_context_chars: int,
+        max_evidence_items: int,
+        include_raw: bool,
+    ) -> Dict[str, object]:
+        repository = str(context.get("repository", "unknown/unknown") or "unknown/unknown").strip()
+        payload = dict(context)
+        package = self._build_repo_analysis_context_package(
+            context,
+            repo_url=repo_url,
+            question=question,
+            intent=intent,
+            context_mode=context_mode,
+            max_context_chars=max_context_chars,
+            max_evidence_items=max_evidence_items,
+        )
+        payload.update(
+            {
+                "repo_url": repo_url,
+                "repository": repository,
+                "source": source,
+                "hours": hours,
+                "question": str(question or ""),
+                "intent": str(intent or ""),
+                "context_mode": context_mode,
+                "max_context_chars": max_context_chars,
+                "max_evidence_items": max_evidence_items,
+                "include_raw": include_raw,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "repo_summary_text": self._build_repo_summary_text(context),
+                "recent_changes_text": self._build_recent_changes_text(context),
+                **package,
+                "readme_text": self._format_repo_readme_excerpt(context),
+                "root_entries_text": self._format_repo_root_entries(context),
+                "changed_files_text": self._format_repo_changed_files(context),
+                "recent_prs_text": self._format_repo_pull_requests(context),
+                "recent_commits_text": self._format_repo_commits(context),
+                "merged_context": package["analysis_prompt_context"],
+            }
+        )
+        return payload
+
+    def _build_repo_analysis_context_package(
+        self,
+        context: Dict[str, object],
+        *,
+        repo_url: str,
+        question: Optional[str],
+        intent: Optional[str],
+        context_mode: str,
+        max_context_chars: int,
+        max_evidence_items: int,
+    ) -> Dict[str, object]:
+        safe_max_chars = max(1000, min(int(max_context_chars or DEFAULT_REPO_CONTEXT_MAX_CHARS), 60000))
+        safe_max_items = max(3, min(int(max_evidence_items or 12), 30))
+        mode = str(context_mode or "standard").lower()
+        if mode == "compact":
+            safe_max_chars = min(safe_max_chars, 6000)
+            safe_max_items = min(safe_max_items, 8)
+        elif mode == "deep":
+            safe_max_chars = max(safe_max_chars, DEFAULT_REPO_CONTEXT_MAX_CHARS)
+
+        all_blocks = self._build_evidence_blocks(
+            context,
+            question=question,
+            intent=intent,
+        )
+        missing_context = self._build_missing_context(context)
+        selected_blocks, omitted = self._select_evidence_blocks(
+            all_blocks=all_blocks,
+            max_context_chars=safe_max_chars,
+            max_evidence_items=safe_max_items,
+        )
+        prompt = self._render_analysis_prompt_context(
+            context,
+            repo_url=repo_url,
+            question=question,
+            intent=intent,
+            context_quality=self._resolve_context_quality(missing_context),
+            missing_context=missing_context,
+            evidence_blocks=selected_blocks,
+            max_context_chars=safe_max_chars,
+        )
+        return {
+            "context_quality": self._resolve_context_quality(missing_context),
+            "analysis_prompt_context": prompt,
+            "evidence_blocks": selected_blocks,
+            "omitted_evidence_count": omitted,
+            "missing_context": missing_context,
+        }
+
+    def _build_evidence_blocks(
+        self,
+        context: Dict[str, object],
+        *,
+        question: Optional[str],
+        intent: Optional[str],
+    ) -> List[Dict[str, object]]:
+        intent_bucket = self._resolve_context_intent_bucket(question=question, intent=intent)
+        blocks: List[Dict[str, object]] = []
+
+        def add_block(block_type: str, title: str, content: str, priority: int) -> None:
+            normalized_content = self._truncate_text(content, REPO_CONTEXT_BLOCK_CHAR_LIMIT)
+            if normalized_content:
+                blocks.append(
+                    {
+                        "type": block_type,
+                        "title": title,
+                        "content": normalized_content,
+                        "priority": priority,
+                    }
+                )
+
+        description = str(context.get("description", "") or "").strip()
+        topics = self._format_repo_topics(context)
+        readme = self._format_repo_readme_excerpt(context)
+        root_entries = self._format_repo_root_entries(context, limit=20)
+        changed_files = context.get("changed_files", []) if isinstance(context.get("changed_files"), list) else []
+        pull_requests = (
+            context.get("recent_pull_requests", [])
+            if isinstance(context.get("recent_pull_requests"), list)
+            else []
+        )
+        commits = context.get("recent_commits", []) if isinstance(context.get("recent_commits"), list) else []
+
+        identity_boost = 30 if intent_bucket == "identity" else 0
+        change_boost = 35 if intent_bucket == "recent" else 0
+        risk_boost = 25 if intent_bucket == "risk" else 0
+        refactor_boost = 20 if intent_bucket == "refactor" else 0
+
+        add_block("summary", "仓库基础信息", self._build_repo_summary_text(context), 100 + identity_boost)
+        add_block("topics", "仓库 Topics", topics, 80 + identity_boost)
+        add_block("readme", "README 摘要", readme, 90 + identity_boost + refactor_boost)
+        add_block("root", "根目录结构", root_entries, 85 + identity_boost + refactor_boost)
+
+        for index, item in enumerate(changed_files[:8]):
+            if not isinstance(item, dict):
+                continue
+            filename = str(item.get("filename", "") or "").strip()
+            if not filename:
+                continue
+            patch_excerpt = str(item.get("patch_excerpt", "") or "").strip()
+            content = (
+                f"{filename} | {str(item.get('status', '')).strip()} | "
+                f"+{self._to_int(item.get('additions'))} / -{self._to_int(item.get('deletions'))}"
+            )
+            if patch_excerpt:
+                content += f"\npatch excerpt:\n{patch_excerpt}"
+            add_block("changed_file", f"近期变更文件 {index + 1}: {filename}", content, 75 + change_boost + risk_boost - index)
+
+        for index, item in enumerate(pull_requests[:5]):
+            if not isinstance(item, dict):
+                continue
+            number = self._to_int(item.get("number"))
+            title = str(item.get("title", "") or "").strip()
+            if number <= 0 and not title:
+                continue
+            content = (
+                f"PR #{number} {title}\n"
+                f"state={str(item.get('state', '')).strip()}, user={str(item.get('user', '')).strip()}, "
+                f"files={self._to_int(item.get('files_count'))}, updated_at={str(item.get('updated_at', '')).strip()}"
+            )
+            add_block("pull_request", f"近期 PR {index + 1}", content, 70 + change_boost - index)
+
+        for index, item in enumerate(commits[:5]):
+            if not isinstance(item, dict):
+                continue
+            sha = str(item.get("sha", "") or "").strip()[:7]
+            message = str(item.get("message", "") or "").strip()
+            if not sha and not message:
+                continue
+            stats = item.get("stats", {}) if isinstance(item.get("stats"), dict) else {}
+            content = (
+                f"{sha} {str(item.get('author', '')).strip()}: {message}\n"
+                f"date={str(item.get('date', '')).strip()}, "
+                f"+{self._to_int(stats.get('additions'))} / -{self._to_int(stats.get('deletions'))}"
+            )
+            add_block("commit", f"近期 Commit {index + 1}", content, 68 + change_boost - index)
+
+        blocks.sort(key=lambda item: (-self._to_int(item.get("priority")), str(item.get("title", ""))))
+        return blocks
+
+    def _select_evidence_blocks(
+        self,
+        *,
+        all_blocks: List[Dict[str, object]],
+        max_context_chars: int,
+        max_evidence_items: int,
+    ) -> tuple[List[Dict[str, object]], int]:
+        selected: List[Dict[str, object]] = []
+        omitted = 0
+        used_chars = 0
+        budget_for_blocks = max(max_context_chars - 1200, 500)
+
+        for block in all_blocks:
+            if len(selected) >= max_evidence_items:
+                omitted += 1
+                continue
+            block_size = len(str(block.get("title", ""))) + len(str(block.get("content", ""))) + 40
+            if used_chars + block_size > budget_for_blocks and selected:
+                omitted += 1
+                continue
+            selected.append(block)
+            used_chars += block_size
+
+        return selected, omitted
+
+    def _render_analysis_prompt_context(
+        self,
+        context: Dict[str, object],
+        *,
+        repo_url: str,
+        question: Optional[str],
+        intent: Optional[str],
+        context_quality: str,
+        missing_context: List[str],
+        evidence_blocks: List[Dict[str, object]],
+        max_context_chars: int,
+    ) -> str:
+        repository = str(context.get("repository", "unknown/unknown") or "unknown/unknown").strip()
+        header = [
+            "你将基于以下 NightShift 已筛选的 GitHub 仓库上下文进行分析。",
+            f"仓库：{repository}",
+            f"仓库地址：{repo_url}",
+            f"用户问题：{str(question or '').strip() or '未提供'}",
+            f"识别意图：{str(intent or '').strip() or '未提供'}",
+            f"上下文质量：{context_quality}",
+            f"缺失上下文：{', '.join(missing_context) if missing_context else '无'}",
+            "",
+            "证据块：",
+        ]
+        block_lines: List[str] = []
+        for index, block in enumerate(evidence_blocks, start=1):
+            block_lines.extend(
+                [
+                    f"[{index}] {str(block.get('title', '')).strip()} ({str(block.get('type', '')).strip()})",
+                    str(block.get("content", "")).strip(),
+                    "",
+                ]
+            )
+
+        footer = [
+            "分析要求：",
+            "- 只基于以上证据回答，不要编造未出现的信息。",
+            "- 如果上下文质量不是 complete，说明不确定性和缺失信息。",
+            "- 优先回答用户问题；涉及最近更新时引用 changed_file、pull_request 或 commit 证据。",
+        ]
+        prompt = "\n".join(header + block_lines + footer).strip()
+        return self._truncate_text(prompt, max_context_chars)
+
+    def _build_missing_context(self, context: Dict[str, object]) -> List[str]:
+        missing: List[str] = []
+        if not str(context.get("readme_excerpt", "") or "").strip():
+            missing.append("README")
+        if not isinstance(context.get("root_entries"), list) or not context.get("root_entries"):
+            missing.append("根目录结构")
+        if not isinstance(context.get("changed_files"), list) or not context.get("changed_files"):
+            missing.append("近期变更文件")
+        if not isinstance(context.get("recent_pull_requests"), list) or not context.get("recent_pull_requests"):
+            missing.append("最近 PR")
+        if not isinstance(context.get("recent_commits"), list) or not context.get("recent_commits"):
+            missing.append("最近 Commit")
+        return missing
+
+    def _resolve_context_quality(self, missing_context: List[str]) -> str:
+        if not missing_context:
+            return "complete"
+        if len(missing_context) <= 2:
+            return "partial"
+        return "weak"
+
+    def _resolve_context_intent_bucket(self, *, question: Optional[str], intent: Optional[str]) -> str:
+        text = f"{intent or ''} {question or ''}".lower()
+        if any(term in text for term in ["最近", "更新", "commit", "commits", "pr", "change", "changes"]):
+            return "recent"
+        if any(term in text for term in ["找问题", "风险", "bug", "漏洞", "安全", "排查", "异常"]):
+            return "risk"
+        if any(term in text for term in ["改造", "优化", "重构", "规划", "新增", "实现"]):
+            return "refactor"
+        return "identity"
+
+    def _build_recent_changes_text(self, context: Dict[str, object]) -> str:
+        parts = [
+            "近期变更文件：",
+            self._format_repo_changed_files(context),
+            "近期 PR：",
+            self._format_repo_pull_requests(context),
+            "近期 Commit：",
+            self._format_repo_commits(context),
+        ]
+        return self._truncate_text("\n".join(parts), 5000)
+
+    def _format_repo_topics(self, context: Dict[str, object]) -> str:
+        topics = context.get("topics", [])
+        if not isinstance(topics, list) or not topics:
+            return "- 当前未获取到 topics"
+        return "\n".join(f"- {str(item).strip()}" for item in topics[:8] if str(item).strip()) or "- 当前未获取到 topics"
+
+    def _truncate_text(self, value: object, max_chars: int) -> str:
+        text = str(value or "").strip()
+        if len(text) <= max_chars:
+            return text
+        suffix = f"\n...[已截断，原始长度 {len(text)} 字符]"
+        return text[: max(max_chars - len(suffix), 0)].rstrip() + suffix
+
+    def _build_repo_context_merged_text(self, context: Dict[str, object]) -> str:
+        parts = [
+            f"仓库：{str(context.get('repository', '')).strip()}",
+            f"描述：{str(context.get('description', '')).strip()}",
+            f"默认分支：{str(context.get('default_branch', '')).strip()}",
+            f"Topics：{', '.join(str(item).strip() for item in context.get('topics', []) if str(item).strip())}",
+            f"README：{self._format_repo_readme_excerpt(context)}",
+            f"根目录：{self._format_repo_root_entries(context)}",
+            f"变更文件：{self._format_repo_changed_files(context)}",
+            f"PR：{self._format_repo_pull_requests(context)}",
+            f"Commit：{self._format_repo_commits(context)}",
+        ]
+        return "\n".join(part for part in parts if part and not part.endswith(": "))
+
+    def _build_repo_summary_text(self, context: Dict[str, object]) -> str:
+        repository = str(context.get("repository", "unknown/unknown")).strip() or "unknown/unknown"
+        description = str(context.get("description", "") or "").strip()
+        default_branch = str(context.get("default_branch", "") or "").strip() or "unknown"
+        root_entries = self._format_repo_root_entries(context)
+        if description:
+            return f"{repository} 的默认分支是 {default_branch}，仓库描述为：{description}。根目录结构包括：{root_entries}。"
+        return f"{repository} 的默认分支是 {default_branch}。根目录结构包括：{root_entries}。"
+
+    def _format_repo_readme_excerpt(self, context: Dict[str, object]) -> str:
+        readme_excerpt = str(context.get("readme_excerpt", "") or "").strip()
+        return readme_excerpt or "当前未获取到 README 摘要。"
+
+    def _format_repo_root_entries(self, context: Dict[str, object], limit: int = 20) -> str:
+        entries = context.get("root_entries", [])
+        if not isinstance(entries, list) or not entries:
+            return "- 当前未获取到仓库根目录结构"
+        safe_limit = max(1, min(int(limit or 20), 20))
+        return "\n".join(f"- {str(item).strip()}" for item in entries[:safe_limit] if str(item).strip()) or "- 当前未获取到仓库根目录结构"
+
+    def _format_repo_changed_files(self, context: Dict[str, object]) -> str:
+        changed_files = context.get("changed_files", [])
+        if not isinstance(changed_files, list) or not changed_files:
+            return "- 当前未获取到最近变更文件"
+        lines: List[str] = []
+        for item in changed_files[:8]:
+            if not isinstance(item, dict):
+                continue
+            filename = str(item.get("filename", "")).strip()
+            if not filename:
+                continue
+            line = (
+                f"- {filename} | {str(item.get('status', '')).strip()} | "
+                f"+{self._to_int(item.get('additions'))} / -{self._to_int(item.get('deletions'))}"
+            )
+            patch_excerpt = str(item.get("patch_excerpt", "") or "").strip()
+            if patch_excerpt:
+                line += f" | patch: {patch_excerpt}"
+            lines.append(line)
+        return "\n".join(lines) or "- 当前未获取到最近变更文件"
+
+    def _format_repo_pull_requests(self, context: Dict[str, object]) -> str:
+        pull_requests = context.get("recent_pull_requests", [])
+        if not isinstance(pull_requests, list) or not pull_requests:
+            return "- 当前未获取到最近 PR"
+        lines: List[str] = []
+        for item in pull_requests[:5]:
+            if not isinstance(item, dict):
+                continue
+            lines.append(
+                f"- PR #{self._to_int(item.get('number'))} {str(item.get('title', '')).strip()} "
+                f"({str(item.get('user', '')).strip()})"
+            )
+        return "\n".join(lines) or "- 当前未获取到最近 PR"
+
+    def _format_repo_commits(self, context: Dict[str, object]) -> str:
+        commits = context.get("recent_commits", [])
+        if not isinstance(commits, list) or not commits:
+            return "- 当前未获取到最近 Commit"
+        lines: List[str] = []
+        for item in commits[:5]:
+            if not isinstance(item, dict):
+                continue
+            lines.append(
+                f"- {str(item.get('sha', '')).strip()[:7]} {str(item.get('author', '')).strip()}: "
+                f"{str(item.get('message', '')).strip()}"
+            )
+        return "\n".join(lines) or "- 当前未获取到最近 Commit"
+
+    def _to_int(self, value: object, default: int = 0) -> int:
+        try:
+            return default if value is None else int(value)
+        except (TypeError, ValueError):
+            return default
 
     def _build_empty_snapshot(self, repo_url: str, hours: int) -> Dict[str, object]:
         repository = self._repo_name_from_url(repo_url)
