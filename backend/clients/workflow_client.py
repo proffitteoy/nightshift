@@ -17,7 +17,7 @@ LOGGER = logging.getLogger(__name__)
 
 WORKFLOW_API_URL = "https://xingchen-api.xf-yun.com/workflow/v1/chat/completions"
 WORKFLOW_TIMEOUT_SECONDS = 120.0
-WORKFLOW_INPUT_FIELD = "AGENT-USER-INPUT"
+WORKFLOW_INPUT_FIELD = "AGENT_USER_INPUT"
 
 # 缓存配置：同一 user_input 的分析结果缓存 1 小时
 CACHE_TTL_SECONDS = 3600
